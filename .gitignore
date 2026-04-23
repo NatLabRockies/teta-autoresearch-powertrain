@@ -1,0 +1,23 @@
+*.local.*
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+__pycache__/
+*.pyc
+*.pkl
+*.joblib
+
+.DS_Store
+.vscode/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+*.egg-info/
+
+# Optuna study DBs — regeneratable, often multi-MB, not worth committing
+domains/*/results/**/*.db
+optimizers/**/results/
+results/**/*.db
