@@ -2,3 +2,4 @@ commit	rmse	status	description
 5fb5a93	0.013345	keep	baseline (RF n=20, depth=10, features=speed_mph,grade_percent,miles)
 9c93103	0.013347	discard	switch to HistGradientBoostingRegressor at defaults
 d3a0d91	0.013341	keep	RF n_estimators 20 -> 200
+a463e03	0.013964	discard	RF max_depth 10 -> None (overfits)

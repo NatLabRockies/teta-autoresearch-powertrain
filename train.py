@@ -50,7 +50,7 @@ CONFIG = POWERTRAINS[POWERTRAIN]
 def random_forest_model():
     model_params = {
         "n_estimators": 200,
-        "max_depth": None,
+        "max_depth": 10,
         "min_samples_split": 10,
         "random_state": 52,
         "n_jobs": -1,  # use all cores
