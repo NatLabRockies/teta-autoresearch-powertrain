@@ -16,3 +16,4 @@ a29f677	0.008088	discard	HGBR max_iter 100 -> 1000 (no-op: early_stopping='auto'
 e6d3ca7	0.008011	keep	HGBR max_leaf_nodes 127 -> 255
 680b210	0.008012	discard	HGBR LR 0.05 + max_iter 1000 (tied, more complex)
 39458eb	0.008061	discard	switch HGBR -> LGBM defaults (num_leaves=31 too small)
+7b0bf73	0.008007	keep	switch HGBR -> LGBM num_leaves=255 (matched)
