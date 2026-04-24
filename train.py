@@ -32,6 +32,7 @@ LINK_FEATURES = [
     "prev2_grade_percent",
     "prev2_miles",
     "abs_bearing_delta",
+    "prev_abs_bearing_delta",
 ]
 
 TARGET = "energy_rate_gge"
@@ -111,6 +112,11 @@ def train_model() -> dict:
     prev_bearing = df.groupby("journey_id")["_bearing"].shift(1).fillna(df["_bearing"])
     delta = (df["_bearing"] - prev_bearing + 180) % 360 - 180
     df["abs_bearing_delta"] = delta.abs()
+    df["prev_abs_bearing_delta"] = (
+        df.groupby("journey_id")["abs_bearing_delta"]
+        .shift(1)
+        .fillna(df["abs_bearing_delta"])
+    )
 
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
