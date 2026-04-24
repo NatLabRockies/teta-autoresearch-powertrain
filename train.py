@@ -4,6 +4,7 @@ import numpy as np
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
 from lightgbm import LGBMRegressor
+from shapely import from_wkb
 
 
 from fixed_utils import (
@@ -30,6 +31,7 @@ LINK_FEATURES = [
     "prev_speed_delta",
     "prev2_grade_percent",
     "prev2_miles",
+    "abs_bearing_delta",
 ]
 
 TARGET = "energy_rate_gge"
@@ -95,6 +97,20 @@ def train_model() -> dict:
         df.groupby("journey_id")["grade_percent"].shift(2).fillna(df["grade_percent"])
     )
     df["prev2_miles"] = df.groupby("journey_id")["miles"].shift(2).fillna(df["miles"])
+
+    def _bearing(hex_str):
+        g = from_wkb(bytes.fromhex(hex_str))
+        coords = list(g.coords)
+        if len(coords) < 2:
+            return 0.0
+        lon1, lat1 = coords[0]
+        lon2, lat2 = coords[-1]
+        return np.degrees(np.arctan2(lon2 - lon1, lat2 - lat1))
+
+    df["_bearing"] = df["geometry"].apply(_bearing)
+    prev_bearing = df.groupby("journey_id")["_bearing"].shift(1).fillna(df["_bearing"])
+    delta = (df["_bearing"] - prev_bearing + 180) % 360 - 180
+    df["abs_bearing_delta"] = delta.abs()
 
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
