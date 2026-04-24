@@ -84,3 +84,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp35: LGBM min_child_samples 50 -> rmse 0.006673 (keep, -0.18%)
 - [x] exp36: LGBM n_estimators 1000 (w/ min_child_samples=50) -> rmse 0.006684 (discard, still overfits)
 - [x] exp37: LGBM LR 0.05 -> rmse 0.006656 (keep, -0.25%)
+- [x] exp38: LGBM n_estimators 1000 at LR=0.05 -> rmse 0.006644 (keep, -0.18%)
