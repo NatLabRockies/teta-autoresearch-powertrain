@@ -18,6 +18,7 @@ LINK_FEATURES = [
     "speed_mph",
     "grade_percent",
     "miles",
+    "prev_speed_mph",
 ]
 
 TARGET = "energy_rate_gge"
@@ -68,6 +69,10 @@ def train_model() -> dict:
 
     # sort by journey and time
     df = df.sort_values(["journey_id", "link_start_time"])
+
+    df["prev_speed_mph"] = (
+        df.groupby("journey_id")["speed_mph"].shift(1).fillna(df["speed_mph"])
+    )
 
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
