@@ -18,6 +18,7 @@ LINK_FEATURES = [
     "speed_mph",
     "grade_percent",
     "miles",
+    "speed_squared",
 ]
 
 TARGET = "energy_rate_gge"
@@ -68,6 +69,8 @@ def train_model() -> dict:
 
     # sort by journey and time
     df = df.sort_values(["journey_id", "link_start_time"])
+
+    df["speed_squared"] = df["speed_mph"] ** 2
 
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
