@@ -36,3 +36,4 @@ e2f99cb	0.006695	discard	LGBM n_estimators 500 -> 1000 (slight overfit)
 6eb7b71	0.006686	discard	LGBM feature_fraction 0.9 (tied)
 de7a5d1	0.006673	keep	LGBM min_child_samples 20 -> 50
 34e609f	0.006684	discard	LGBM n_estimators 1000 with min_child_samples=50 (still overfits)
+fb6f344	0.006656	keep	LGBM learning_rate 0.1 -> 0.05
