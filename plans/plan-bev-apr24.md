@@ -74,3 +74,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp25: switch LGBM -> XGBoost hist max_depth=8 -> rmse 0.007110 (discard, +1.3%)
 - [x] exp26: add prev2_miles -> rmse 0.006990 (keep, -0.41% below 0.007)
 - [x] exp27: add prev_speed*prev_grade -> rmse 0.006994 (discard, redundant)
+- [x] exp28: add abs_bearing_delta (cornering/geometry) -> rmse 0.006775 (keep, -3.08% BIG)
