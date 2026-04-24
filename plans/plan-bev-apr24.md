@@ -57,3 +57,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp8: add grade_delta -> rmse 0.008258 (keep, -0.11%)
 - [x] exp9: add speed*grade power term -> rmse 0.008247 (keep, -0.13%)
 - [x] exp10: switch RF -> HGBR defaults -> rmse 0.008088 (keep, -1.93%)
+- [x] exp11: HGBR max_iter 1000 -> rmse 0.008088 (discard, early_stopping='auto' caps it)

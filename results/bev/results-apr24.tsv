@@ -10,3 +10,4 @@ a463e03	0.013964	discard	RF max_depth 10 -> None (overfits)
 350dc21	0.008258	keep	add grade_delta
 d0de3da	0.008247	keep	add speed_mph * grade_percent (power term)
 36755fd	0.008088	keep	switch RF -> HGBR (defaults) with 8 features
+a29f677	0.008088	discard	HGBR max_iter 100 -> 1000 (no-op: early_stopping='auto' caps it)
