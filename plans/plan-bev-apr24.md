@@ -75,3 +75,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp26: add prev2_miles -> rmse 0.006990 (keep, -0.41% below 0.007)
 - [x] exp27: add prev_speed*prev_grade -> rmse 0.006994 (discard, redundant)
 - [x] exp28: add abs_bearing_delta (cornering/geometry) -> rmse 0.006775 (keep, -3.08% BIG)
+- [x] exp29: add prev_abs_bearing_delta (turning history) -> rmse 0.006742 (keep, -0.49%)
