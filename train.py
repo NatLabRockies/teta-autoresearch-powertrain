@@ -66,7 +66,7 @@ CONFIG = POWERTRAINS[POWERTRAIN]
 def make_model():
     return LGBMRegressor(
         num_leaves=255,
-        n_estimators=500,
+        n_estimators=1000,
         min_child_samples=50,
         learning_rate=0.05,
         random_state=52,
