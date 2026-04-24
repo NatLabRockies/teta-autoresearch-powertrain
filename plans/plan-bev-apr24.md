@@ -61,3 +61,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp12: HGBR learning_rate 0.05 -> rmse 0.008137 (discard, +0.6% under-fit)
 - [x] exp13: HGBR max_leaf_nodes 127 -> rmse 0.008015 (keep, -0.9%)
 - [x] exp14: HGBR max_leaf_nodes 255 -> rmse 0.008011 (keep, -0.05% marginal)
+- [x] exp15: HGBR LR 0.05 + max_iter 1000 (paired) -> rmse 0.008012 (discard, tied)

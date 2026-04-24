@@ -14,3 +14,4 @@ a29f677	0.008088	discard	HGBR max_iter 100 -> 1000 (no-op: early_stopping='auto'
 82d6d0e	0.008137	discard	HGBR learning_rate 0.1 -> 0.05 (under-fit at default max_iter=100)
 2edb886	0.008015	keep	HGBR max_leaf_nodes 31 -> 127
 e6d3ca7	0.008011	keep	HGBR max_leaf_nodes 127 -> 255
+680b210	0.008012	discard	HGBR LR 0.05 + max_iter 1000 (tied, more complex)
