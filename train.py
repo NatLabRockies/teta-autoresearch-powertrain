@@ -26,6 +26,7 @@ LINK_FEATURES = [
     "grade_times_miles",
     "prev_miles",
     "prev2_speed_mph",
+    "prev3_speed_mph",
 ]
 
 TARGET = "energy_rate_gge"
@@ -82,6 +83,9 @@ def train_model() -> dict:
     df["prev_miles"] = df.groupby("journey_id")["miles"].shift(1).fillna(df["miles"])
     df["prev2_speed_mph"] = (
         df.groupby("journey_id")["speed_mph"].shift(2).fillna(df["speed_mph"])
+    )
+    df["prev3_speed_mph"] = (
+        df.groupby("journey_id")["speed_mph"].shift(3).fillna(df["speed_mph"])
     )
 
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
