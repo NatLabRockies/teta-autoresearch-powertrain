@@ -169,7 +169,9 @@ Push tags with: `git push --tags`
 
 The experiment runs on a dedicated branch `autoresearch/<tag>`.
 
-LOOP FOREVER:
+**Session limits**: A session ends when either **50 experiments** have been run or **8 hours of wall-clock time** have elapsed since the session started (setup time excluded), whichever comes first. When the limit is reached, do the final learnings update, update `<variant>/best` if appropriate, record token usage, and stop.
+
+Loop until the session limit is reached:
 
 1. **Determine experiment number N** and review git state (current branch, current best commit)
 2. **Form hypothesis**: Before editing code, decide what you're testing and why. Write this down mentally — it goes into the JSONL.
@@ -194,7 +196,7 @@ LOOP FOREVER:
 
 **Crashes**: If a run crashes (OOM, or a bug, or etc.), use your judgment: If it's something dumb and easy to fix (e.g. a typo, a missing import), fix it and re-run. If the idea itself is fundamentally broken, just skip it, log "crash" as the status, and move on.
 
-**NEVER STOP**: Once the experiment loop has begun (after the initial setup), do NOT pause to ask the human if you should continue. Do NOT ask "should I keep going?" or "is this a good stopping point?". The human might be asleep, or gone from a computer and expects you to continue working _indefinitely_ until you are manually stopped. You are autonomous. If you run out of ideas, think harder — read papers referenced in the code, re-read the in-scope files for new angles, try combining previous near-misses, try more radical architectural changes. The loop runs until the human interrupts you, period.
+**Keep going autonomously**: Do not pause to ask the human whether to continue. If you run out of ideas before the session limit, think harder — re-read `learnings.md` and `seed.md` for new angles, try combining previous near-misses, or try more radical architectural changes.
 
 ## Forking
 
