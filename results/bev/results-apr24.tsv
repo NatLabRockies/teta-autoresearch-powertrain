@@ -29,3 +29,4 @@ bdc196c	0.007019	keep	add prev2_grade_percent
 975ae95	0.006994	discard	add prev_speed * prev_grade (prev-link power)
 e915b81	0.006775	keep	add abs_bearing_delta (cornering from geometry)
 c6cd975	0.006742	keep	add prev_abs_bearing_delta (turning history)
+bdf12f6	0.006736	keep	add sinuosity (polyline/chord ratio)
