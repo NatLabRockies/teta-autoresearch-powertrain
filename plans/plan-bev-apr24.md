@@ -70,3 +70,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp21: add prev2_speed_mph -> rmse 0.007056 (keep, -5.9% BIG)
 - [x] exp22: add prev3_speed_mph -> rmse 0.007050 (keep, -0.08%)
 - [x] exp23: add prev_speed_delta -> rmse 0.007026 (keep, -0.34%)
+- [x] exp24: add prev2_grade_percent -> rmse 0.007019 (keep, -0.10%)
