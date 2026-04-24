@@ -9,3 +9,4 @@ a463e03	0.013964	discard	RF max_depth 10 -> None (overfits)
 1891be3	0.008267	keep	add speed_delta (speed_mph - prev_speed_mph)
 350dc21	0.008258	keep	add grade_delta
 d0de3da	0.008247	keep	add speed_mph * grade_percent (power term)
+36755fd	0.008088	keep	switch RF -> HGBR (defaults) with 8 features

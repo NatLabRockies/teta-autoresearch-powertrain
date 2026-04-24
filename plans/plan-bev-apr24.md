@@ -56,3 +56,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp7: add speed_delta -> rmse 0.008267 (keep, -9.6%)
 - [x] exp8: add grade_delta -> rmse 0.008258 (keep, -0.11%)
 - [x] exp9: add speed*grade power term -> rmse 0.008247 (keep, -0.13%)
+- [x] exp10: switch RF -> HGBR defaults -> rmse 0.008088 (keep, -1.93%)
