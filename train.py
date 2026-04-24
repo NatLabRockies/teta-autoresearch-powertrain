@@ -53,9 +53,7 @@ CONFIG = POWERTRAINS[POWERTRAIN]
 
 
 def make_model():
-    return LGBMRegressor(
-        num_leaves=255, n_estimators=500, random_state=52, verbose=-1
-    )
+    return LGBMRegressor(num_leaves=255, random_state=52, verbose=-1)
 
 
 def train_model() -> dict:
