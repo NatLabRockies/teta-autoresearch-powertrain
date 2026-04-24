@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
-from lightgbm import LGBMRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 
 from fixed_utils import (
@@ -53,7 +53,7 @@ CONFIG = POWERTRAINS[POWERTRAIN]
 
 
 def make_model():
-    return LGBMRegressor(random_state=52, verbose=-1)
+    return HistGradientBoostingRegressor(max_leaf_nodes=255, random_state=52)
 
 
 def train_model() -> dict:
