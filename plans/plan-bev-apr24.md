@@ -80,3 +80,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp31: LGBM n_estimators 200 -> rmse 0.006702 (keep, -0.50%)
 - [x] exp32: LGBM n_estimators 500 -> rmse 0.006685 (keep, -0.25%)
 - [x] exp33: LGBM n_estimators 1000 -> rmse 0.006695 (discard, slight overfit)
+- [x] exp34: LGBM feature_fraction 0.9 -> rmse 0.006686 (discard, tied)
