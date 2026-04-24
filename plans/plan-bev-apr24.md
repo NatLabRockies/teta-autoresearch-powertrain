@@ -51,3 +51,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp2: RF n_estimators 20 -> 200 -> rmse 0.013341 (keep, -0.03%)
 - [x] exp3: RF max_depth None (uncap) -> rmse 0.013964 (discard, +4.7% overfit)
 - [x] exp4: add speed_squared feature -> rmse 0.013341 (discard, tied - trees already learn it)
+- [x] exp5: add prev_speed_mph -> rmse 0.009155 (keep, -31.4% BREAKTHROUGH)
