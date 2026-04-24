@@ -21,3 +21,4 @@ e6d3ca7	0.008011	keep	HGBR max_leaf_nodes 127 -> 255
 ff25f21	0.008004	keep	add grade_percent * miles (PE proxy)
 35d27eb	0.007502	keep	add prev_miles
 3820acd	0.007056	keep	add prev2_speed_mph (speed 2 links back)
+7c4c292	0.007050	keep	add prev3_speed_mph (speed 3 links back)
