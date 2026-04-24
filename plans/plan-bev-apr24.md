@@ -66,3 +66,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp17: LGBM num_leaves=255 -> rmse 0.008007 (keep, -0.05% new best)
 - [x] exp18: LGBM n_estimators 500 -> rmse 0.008061 (discard, +0.7% overfit)
 - [x] exp19: add grade*miles (PE proxy) -> rmse 0.008004 (keep, -0.04%)
+- [x] exp20: add prev_miles -> rmse 0.007502 (keep, -6.3% BIG)
