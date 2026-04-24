@@ -47,3 +47,5 @@ This is an LLM-baseline session for the LLM-vs-optimizer comparison. The optimiz
 Updated after each experiment. Format: `- [x] expN: description -> <metric> (status)`
 
 - [x] exp0: baseline (RF n=20, depth=10, 3 link features) -> rmse 0.013345 (keep, baseline)
+- [x] exp1: switch to HGBR at defaults -> rmse 0.013347 (discard, ~tied but worse)
+- [x] exp2: RF n_estimators 20 -> 200 -> rmse 0.013341 (keep, -0.03%)
