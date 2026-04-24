@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
-from xgboost import XGBRegressor
+from lightgbm import LGBMRegressor
 
 
 from fixed_utils import (
@@ -59,7 +59,7 @@ CONFIG = POWERTRAINS[POWERTRAIN]
 
 
 def make_model():
-    return XGBRegressor(tree_method="hist", max_depth=8, random_state=52)
+    return LGBMRegressor(num_leaves=255, random_state=52, verbose=-1)
 
 
 def train_model() -> dict:
