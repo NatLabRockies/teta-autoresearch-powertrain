@@ -18,3 +18,4 @@ e6d3ca7	0.008011	keep	HGBR max_leaf_nodes 127 -> 255
 39458eb	0.008061	discard	switch HGBR -> LGBM defaults (num_leaves=31 too small)
 7b0bf73	0.008007	keep	switch HGBR -> LGBM num_leaves=255 (matched)
 8bf0d7d	0.008061	discard	LGBM n_estimators 100 -> 500 (overfits with wide trees)
+ff25f21	0.008004	keep	add grade_percent * miles (PE proxy)
