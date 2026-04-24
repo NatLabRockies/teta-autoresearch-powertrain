@@ -7,3 +7,4 @@ a463e03	0.013964	discard	RF max_depth 10 -> None (overfits)
 46bdbfa	0.009155	keep	add prev_speed_mph (previous-link speed per journey)
 53ad966	0.009144	keep	add prev_grade_percent
 1891be3	0.008267	keep	add speed_delta (speed_mph - prev_speed_mph)
+350dc21	0.008258	keep	add grade_delta

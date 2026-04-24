@@ -54,3 +54,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp5: add prev_speed_mph -> rmse 0.009155 (keep, -31.4% BREAKTHROUGH)
 - [x] exp6: add prev_grade_percent -> rmse 0.009144 (keep, -0.12%)
 - [x] exp7: add speed_delta -> rmse 0.008267 (keep, -9.6%)
+- [x] exp8: add grade_delta -> rmse 0.008258 (keep, -0.11%)
