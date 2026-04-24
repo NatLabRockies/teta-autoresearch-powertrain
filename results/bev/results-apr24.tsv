@@ -25,3 +25,4 @@ ff25f21	0.008004	keep	add grade_percent * miles (PE proxy)
 703d947	0.007026	keep	add prev_speed_delta (prev_speed - prev2_speed)
 bdc196c	0.007019	keep	add prev2_grade_percent
 74b0c79	0.007110	discard	switch LGBM -> XGBoost (tree_method=hist, max_depth=8)
+4a8dc9a	0.006990	keep	add prev2_miles
