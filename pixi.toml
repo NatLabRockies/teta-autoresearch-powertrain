@@ -25,7 +25,6 @@ matplotlib = ">=3.10.8,<4"
 pandas = ">=3.0.1,<4"
 pyarrow = ">=23.0.1,<24"
 scikit-learn = ">=1.8.0,<2"
-pytorch = ">=2.10.0,<3"
 dprint = ">=0.50.0,<0.51"
 ruff = ">=0.15.10,<0.16"
 pandas-stubs = ">=3.0.0.260204,<4"
@@ -37,3 +36,18 @@ shapely = ">=2.1.2,<3"
 optuna = ">=3.0,<5"
 xgboost = ">=2.0,<3"
 lightgbm = ">=4.0,<5"
+
+# PyTorch: GPU build on linux-64 (via the conda-forge `pytorch-gpu` metapackage),
+# CPU build elsewhere. The `[system-requirements]` cuda entry tells pixi the
+# host has a CUDA 12 driver so it will prefer CUDA-enabled package builds.
+[system-requirements]
+cuda = "12"
+
+[target.linux-64.dependencies]
+pytorch-gpu = ">=2.10.0,<3"
+
+[target.osx-arm64.dependencies]
+pytorch = ">=2.10.0,<3"
+
+[target.linux-aarch64.dependencies]
+pytorch = ">=2.10.0,<3"
