@@ -1,2 +1,3 @@
 commit	rmse	status	description
 5fb5a93	0.013345	keep	baseline (RF n=20, depth=10, features=speed_mph,grade_percent,miles)
+9c93103	0.013347	discard	switch to HistGradientBoostingRegressor at defaults

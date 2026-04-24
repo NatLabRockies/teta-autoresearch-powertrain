@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from concurrent.futures import ProcessPoolExecutor, TimeoutError
 
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 
 from fixed_utils import (
@@ -47,8 +47,16 @@ POWERTRAIN = "bev"  # session selector — the only domain-related line to chang
 CONFIG = POWERTRAINS[POWERTRAIN]
 
 
-def make_model():
-    return HistGradientBoostingRegressor(random_state=52)
+def random_forest_model():
+    model_params = {
+        "n_estimators": 20,
+        "max_depth": 10,
+        "min_samples_split": 10,
+        "random_state": 52,
+        "n_jobs": -1,  # use all cores
+    }
+    model = RandomForestRegressor(**model_params)
+    return model
 
 
 def train_model() -> dict:
@@ -66,7 +74,7 @@ def train_model() -> dict:
     y_train = train_df[TARGET].to_numpy(dtype=np.float32)
     y_test = test_df[TARGET].to_numpy(dtype=np.float32)
 
-    model = make_model()
+    model = random_forest_model()
     model.fit(train_df[LINK_FEATURES], y_train)
     predicted = model.predict(test_df[LINK_FEATURES])
 
