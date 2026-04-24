@@ -31,3 +31,4 @@ e915b81	0.006775	keep	add abs_bearing_delta (cornering from geometry)
 c6cd975	0.006742	keep	add prev_abs_bearing_delta (turning history)
 bdf12f6	0.006736	keep	add sinuosity (polyline/chord ratio)
 d01f6fe	0.006702	keep	LGBM n_estimators 100 -> 200 (17 features)
+1e433e7	0.006685	keep	LGBM n_estimators 200 -> 500
