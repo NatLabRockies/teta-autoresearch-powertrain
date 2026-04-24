@@ -45,3 +45,5 @@ This is an LLM-baseline session for the LLM-vs-optimizer comparison. The optimiz
 ## Progress log
 
 Updated after each experiment. Format: `- [x] expN: description -> <metric> (status)`
+
+- [x] exp0: baseline (RF n=20, depth=10, 3 link features) -> rmse 0.013345 (keep, baseline)
