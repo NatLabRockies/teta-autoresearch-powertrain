@@ -68,6 +68,7 @@ def make_model():
         num_leaves=255,
         n_estimators=500,
         min_child_samples=50,
+        learning_rate=0.05,
         random_state=52,
         verbose=-1,
     )
