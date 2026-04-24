@@ -77,3 +77,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp28: add abs_bearing_delta (cornering/geometry) -> rmse 0.006775 (keep, -3.08% BIG)
 - [x] exp29: add prev_abs_bearing_delta (turning history) -> rmse 0.006742 (keep, -0.49%)
 - [x] exp30: add sinuosity -> rmse 0.006736 (keep, -0.09%)
+- [x] exp31: LGBM n_estimators 200 -> rmse 0.006702 (keep, -0.50%)
