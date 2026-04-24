@@ -53,3 +53,4 @@ Updated after each experiment. Format: `- [x] expN: description -> <metric> (sta
 - [x] exp4: add speed_squared feature -> rmse 0.013341 (discard, tied - trees already learn it)
 - [x] exp5: add prev_speed_mph -> rmse 0.009155 (keep, -31.4% BREAKTHROUGH)
 - [x] exp6: add prev_grade_percent -> rmse 0.009144 (keep, -0.12%)
+- [x] exp7: add speed_delta -> rmse 0.008267 (keep, -9.6%)
