@@ -53,7 +53,7 @@ CONFIG = POWERTRAINS[POWERTRAIN]
 
 
 def make_model():
-    return HistGradientBoostingRegressor(max_leaf_nodes=127, random_state=52)
+    return HistGradientBoostingRegressor(max_leaf_nodes=255, random_state=52)
 
 
 def train_model() -> dict:
