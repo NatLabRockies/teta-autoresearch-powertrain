@@ -33,6 +33,7 @@ LINK_FEATURES = [
     "prev2_miles",
     "abs_bearing_delta",
     "prev_abs_bearing_delta",
+    "sinuosity",
 ]
 
 TARGET = "energy_rate_gge"
@@ -99,16 +100,21 @@ def train_model() -> dict:
     )
     df["prev2_miles"] = df.groupby("journey_id")["miles"].shift(2).fillna(df["miles"])
 
-    def _bearing(hex_str):
+    def _bearing_and_sinuosity(hex_str):
         g = from_wkb(bytes.fromhex(hex_str))
         coords = list(g.coords)
         if len(coords) < 2:
-            return 0.0
+            return 0.0, 1.0
         lon1, lat1 = coords[0]
         lon2, lat2 = coords[-1]
-        return np.degrees(np.arctan2(lon2 - lon1, lat2 - lat1))
+        bearing = np.degrees(np.arctan2(lon2 - lon1, lat2 - lat1))
+        chord = ((lon2 - lon1) ** 2 + (lat2 - lat1) ** 2) ** 0.5
+        sinuosity = g.length / chord if chord > 1e-9 else 1.0
+        return bearing, sinuosity
 
-    df["_bearing"] = df["geometry"].apply(_bearing)
+    _bs = df["geometry"].apply(_bearing_and_sinuosity)
+    df["_bearing"] = _bs.apply(lambda t: t[0])
+    df["sinuosity"] = _bs.apply(lambda t: t[1])
     prev_bearing = df.groupby("journey_id")["_bearing"].shift(1).fillna(df["_bearing"])
     delta = (df["_bearing"] - prev_bearing + 180) % 360 - 180
     df["abs_bearing_delta"] = delta.abs()
