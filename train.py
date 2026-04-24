@@ -23,6 +23,7 @@ LINK_FEATURES = [
     "speed_delta",
     "grade_delta",
     "speed_times_grade",
+    "grade_times_miles",
 ]
 
 TARGET = "energy_rate_gge"
@@ -75,6 +76,7 @@ def train_model() -> dict:
     df["speed_delta"] = df["speed_mph"] - df["prev_speed_mph"]
     df["grade_delta"] = df["grade_percent"] - df["prev_grade_percent"]
     df["speed_times_grade"] = df["speed_mph"] * df["grade_percent"]
+    df["grade_times_miles"] = df["grade_percent"] * df["miles"]
 
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
