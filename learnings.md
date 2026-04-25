@@ -8,7 +8,8 @@ Pipeline/optimization/data-representation truths that apply across powertrains.
 
 - **LGBM >> RF, HGBR, XGBoost on this tabular regression.** Directly observed on BEV; HGBR is close but LGBM with `num_leaves=255` wins.
 - **Seed-averaged LGBM ensemble is a clean variance-reduction win** (~-0.3% RMSE from a tuned single model). Start with 3 seeds; 5–10 gives diminishing returns. Per-member `random_state` is enough to get decorrelation if combined with subsampling.
-- **In-ensemble bagging + column subsampling flips the single-model antipattern.** `bagging_fraction=0.8, bagging_freq=1, feature_fraction=0.8` hurt single-model LGBM (+0.17%) but help ensemble members by increasing decorrelation, together worth ~-0.15% beyond bare seed averaging.
+- **In-ensemble bagging + column subsampling flips the single-model antipattern.** `bagging_fraction=0.8, bagging_freq=1, feature_fraction=0.8` hurt single-model LGBM (+0.17%) but help ensemble members by increasing decorrelation, together worth ~-0.15% beyond bare seed averaging. **Adding `feature_fraction_bynode=0.85` on top** (per-split feature subsampling) is an additional decorrelation lever worth -0.046% combined; the per-tree and per-split sampling stack rather than cancel.
+- **`max_bin=511` (vs default 255) is a small but real win** at the wider feature set (-0.015%); doubling further to 1023 ties (no resolution benefit at the per-split level). Free unless wall time is tight.
 - **Previous-link features are the dominant signal beyond raw speed/grade/miles.** Adding `prev_speed_mph` alone was a -31% breakthrough on BEV; `prev2/3/4_speed`, `prev_miles`, `prev2_miles`, `prev_speed_delta`, `prev_grade_percent`, `prev_grade_delta` each contribute marginal-to-moderate gains.
 - **Time/dwell features are informative on top of miles+speed.** `time_seconds` and `prev_time_seconds` each delivered ~-0.23% on BEV even though miles/speed express the same quantity — dwell helps LGBM partition stop-and-go vs cruise regions directly.
 - **Geometry-derived features help.** `abs_bearing_delta` (cornering from WKB) was -3% on BEV; `sinuosity`, `prev_abs_bearing_delta`, `prev_sinuosity` (-0.26%), `prev2_sinuosity` (-0.031%) all added incremental value. Curvature persists multi-link; instantaneous turn does not (see "Mirror prev_X" pattern below).
@@ -43,13 +44,13 @@ Battery electric. Link energy is **signed** (regen when negative); asymmetric he
 ### What works
 
 - **Current best feature set (24):** speed_mph, grade_percent, miles, prev_speed_mph, prev_grade_percent, speed_delta, grade_delta, prev_miles, prev2_speed_mph, prev3_speed_mph, prev4_speed_mph, prev_speed_delta, prev_speed_delta_2 (prev2−prev3), prev_speed_delta_3 (prev3−prev4), prev_grade_delta, prev2_miles, prev3_miles, time_seconds, prev_time_seconds, abs_bearing_delta, prev_abs_bearing_delta, sinuosity, prev_sinuosity, prev2_sinuosity. (Note: `prev2_grade_percent` is computed only as a stepping stone to `prev_grade_delta` and is NOT in LINK_FEATURES.)
-- **Current best model:** 10-seed LGBM ensemble, per-member `num_leaves=255, n_estimators=1500, min_child_samples=100, learning_rate=0.04, bagging_fraction=0.8, bagging_freq=1, feature_fraction=0.8`. Predictions averaged across seeds.
+- **Current best model:** 10-seed LGBM ensemble, per-member `num_leaves=255, n_estimators=1500, min_child_samples=100, learning_rate=0.04, bagging_fraction=0.8, bagging_freq=1, feature_fraction=0.8, feature_fraction_bynode=0.85, max_bin=511`. Predictions averaged across seeds.
 
 ### What doesn't work
 
 - Features to NOT add: `prev5_speed_mph`, `prev2_time_seconds`, `speed_accel`, `speed_sq_delta`, `sinuous_miles`, `prev_speed*prev_grade`, `prev3_grade_percent` (grade lookback saturates at prev2), `prev_grade_delta_2` (grade-delta saturates at delta_1), `prev_speed_delta_4` (speed-delta saturates at delta_3), `sinuosity_delta` (both sides already in feature set), `prev2_abs_bearing_delta` (instantaneous turn doesn't persist), `prev4_miles` (miles lookback saturates at prev3), `prev_miles_delta` (network geometry not dynamics), `prev_speed_avg_4` (running mean redundant with individual lags), `effective_grade = grade/sinuosity` (ratio recoverable via ensemble splits), `turn_rate = abs_bearing_delta/miles` (ratio recoverable) — all tied.
 - Features to NOT drop: `grade_delta` (+0.21% if removed), `prev_speed_delta` (+0.34%), `sinuosity` (+0.29% if removed), `prev2_speed_mph` (+0.046% if removed alongside prev_speed_delta) — sign-crossing deltas + persistent geometry signals are irreplaceable.
-- HP antipatterns: single-model bagging (+0.17%), `extra_trees=True` (+0.88%), `num_leaves=127` underfits (+0.24%), `num_leaves=511` overfits + over-budget, `min_child_samples=30` slight overfit, `min_child_samples=80` and `120` each +0.015–0.031% (mcs=100 confirmed optimum), `bagging_freq=3` and `5` tied (also +30s wall time), `bagging_fraction=0.7`/`0.85` each +0.031–0.05%, `feature_fraction=0.7`/`0.85` tied to slight regression, `learning_rate=0.035` and `0.045` each +0.046% (lr=0.04 confirmed optimum), `n_estimators=1600` and `SEEDS=12 + n_estimators=1250` both tied.
+- HP antipatterns: single-model bagging (+0.17%), `extra_trees=True` (+0.88%), `num_leaves=127` underfits (+0.24%), `num_leaves=511` overfits + over-budget, `min_child_samples=30` slight overfit, `min_child_samples=80` and `120` each +0.015–0.031% (mcs=100 confirmed optimum), `bagging_freq=3` and `5` tied (also +30s wall time), `bagging_fraction=0.7`/`0.85` each +0.031–0.05%, `feature_fraction=0.7`/`0.85` tied to slight regression, `learning_rate=0.035` and `0.045` each +0.046% (lr=0.04 confirmed optimum), `n_estimators=1600` and `SEEDS=12 + n_estimators=1250` both tied, `max_bin=1023` tied (max_bin=511 is the sweet spot), `feature_fraction_bynode ∈ {0.7, 0.8, 0.9}` each tied or worse (0.85 is the peak).
 - Cross-family XGB member in ensemble: tied (0.0%, +14 lines). Heterogeneous num_leaves across members: tied.
 - **Target transform `sign(y)*log1p(|y|)` is a dead-end** for the BEV plain-RMSE objective (resolved bev-apr24c/exp1: tied within noise). The loss/eval mismatch (MSE on compressed scale, RMSE on raw scale) cancels out the redistribution benefit.
 - **Per-sample weights ∝ |y| are a dead-end** for plain RMSE (resolved bev-apr24c/exp2: +2.58%). Up-weighting tails biases splits toward extremes at the cost of the dense middle, where most uniform-weight error mass lives.
@@ -57,9 +58,9 @@ Battery electric. Link energy is **signed** (regen when negative); asymmetric he
 
 ### Best known config
 
-- **RMSE:** 0.006531 (bev-apr24c/exp24, commit eb46522, 10-seed ensemble, 24 features).
+- **RMSE:** 0.006527 (bev-apr24c/exp39, commit f01f207, 10-seed ensemble, 24 features).
 - Prior bests: 0.006562 (bev-apr24b/exp30) → 0.006644 (bev-apr24/exp38, single-model).
-- Session `bev-apr24c` so far: **-0.47%** through exp33; main wins were `prev_grade_delta` (-0.046%), drop `prev2_grade_percent` (-0.030%, simplification), `prev_sinuosity` (-0.26%), `prev2_sinuosity` (-0.031%), `prev_speed_delta_2` (-0.046%), `prev_speed_delta_3` (-0.031%), `prev3_miles` (-0.031%).
+- Session `bev-apr24c` total: **-0.534%** (0.006562 → 0.006527) over 40 experiments. Wins: `prev_grade_delta` (-0.046%), drop `prev2_grade_percent` (-0.030%, simplification), `prev_sinuosity` (-0.26%, biggest), `prev2_sinuosity` (-0.031%), `prev_speed_delta_2` (-0.046%), `prev_speed_delta_3` (-0.031%), `prev3_miles` (-0.031%), `max_bin=511` (-0.015%), `feature_fraction_bynode=0.85` (-0.046% combined with the bynode addition).
 
 ### Open hypotheses
 
