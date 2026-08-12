@@ -114,3 +114,7 @@ docker run -it --pids-limit 256 --memory 8g autoresearch
 
 Sandbox: 8 GB memory, 256 PIDs max, no host mounts, dropped Linux
 capabilities, non-root `researcher` user.
+
+# Metadata
+
+NLR Software Record # SWR 26-090.
