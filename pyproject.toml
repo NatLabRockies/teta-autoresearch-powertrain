@@ -5,6 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "routee-autoresearch"
 version = "0.1.0"
+license = "BSD-3-Clause"
 description = "Template for LLM-driven and optimizer-driven autoresearch experiments."
 requires-python = ">=3.13"
 
