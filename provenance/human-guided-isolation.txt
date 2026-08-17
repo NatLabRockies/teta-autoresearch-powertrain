@@ -1,7 +1,7 @@
-# isolation report — spec-guarded
-# captured 2026-08-17T23:11:15Z before the session started
+# isolation report — human-guided
+# captured 2026-08-17T23:15:39Z before the session started
 
-isolation check: /home/nreinick/runs/spec-guarded/tree
+isolation check: /home/nreinick/runs/human-guided/tree
 
   ok    tree has its own .git (git cannot walk up past it)
   ok    history is a single commit
@@ -12,6 +12,6 @@ isolation check: /home/nreinick/runs/spec-guarded/tree
   ok    results/ and plans/ are empty
   ok    data/ resolves outside any git repo (/home/nreinick/data/routee-bev)
   ok    no CLAUDE.md in the tree or any ancestor
-  ok    no sibling experiment trees in /home/nreinick/runs/spec-guarded
+  ok    no sibling experiment trees in /home/nreinick/runs/human-guided
 
 PASS — tree is isolated

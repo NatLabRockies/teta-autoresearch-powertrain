@@ -14,7 +14,7 @@ Both trees were generated from the same template commit, by the same command mod
 
 ```bash
 tools/new_tree.sh ~/runs/unguarded/tree    --no-domain --data ~/data/routee-bev
-tools/new_tree.sh ~/runs/spec-guarded/tree             --data ~/data/routee-bev
+tools/new_tree.sh ~/runs/human-guided/tree             --data ~/data/routee-bev
 ```
 
 ## Trees
@@ -22,7 +22,7 @@ tools/new_tree.sh ~/runs/spec-guarded/tree             --data ~/data/routee-bev
 | arm | scaffold commit | `domain.md` | `seed.md` |
 | --- | --- | --- | --- |
 | `unguarded` | `6ad473b016307ff72d2c55b30393bcd1fd83ba2e` | absent | empty |
-| `spec-guarded` | `7a4eed3401b1620851db3349805fd0b987d2ca72` | present | empty |
+| `human-guided` | `7a4eed3401b1620851db3349805fd0b987d2ca72` | present | empty |
 
 Both trees are otherwise byte-identical, including `program.md`, `fixed_utils.py`, and the
 starting `train.py`. Both produce the same baseline:
@@ -51,7 +51,7 @@ a fresh run is supposed to reach independently.
 
 ## Isolation
 
-`unguarded-isolation.txt` and `spec-guarded-isolation.txt` are the verifier's output for each
+`unguarded-isolation.txt` and `human-guided-isolation.txt` are the verifier's output for each
 tree, captured before its session began. Both PASS on all ten checks.
 
 Re-run at any time with:
@@ -72,7 +72,7 @@ Stated plainly, because the isolation claim should not be read as stronger than 
   path outside its tree; the run directories simply give it nothing to find. Enforcement would
   need a container that bind-mounts only the tree and the dataset.
 - The sibling check covers **one** directory level. The two arms live at `~/runs/unguarded/tree`
-  and `~/runs/spec-guarded/tree`, so `ls ../..` still reveals that the other arm exists — and its
+  and `~/runs/human-guided/tree`, so `ls ../..` still reveals that the other arm exists — and its
   tree is readable from there. Neither arm has any reason to look, and the post-hoc transcript
   audit below will show whether either did, but the filesystem does not prevent it. Putting the
   two arms under unrelated roots, or in containers, is what would.

@@ -10,7 +10,7 @@ differ in exactly one thing: whether `domain.md` is present.
 | arm | `domain.md` | what the agent is told |
 | --- | --- | --- |
 | `unguarded` | absent | the protocol and the scaffold, nothing else |
-| `spec-guarded` | present | the problem, the inference-time environment, and three prohibitions |
+| `human-guided` | present | the problem, the inference-time environment, and three prohibitions |
 
 The three prohibitions in `domain.md` are not stylistic. Each was written after an earlier
 session found and exploited the gap it closes: no features unavailable at inference time, no
@@ -30,8 +30,8 @@ experiment gets scored twice:
 - **audited** — the same model, scored outside the tree on the full held-out set with
   inference-time feature validity enforced
 
-For the guarded arm those two numbers should track each other. For the unguarded arm, the gap
-between them is the finding.
+For the human-guided arm those two numbers should track each other. For the unguarded arm, the
+gap between them is the finding.
 
 ## Status
 
@@ -40,7 +40,7 @@ The runs have not started. Both trees are built, verified isolated, and waiting.
 | | |
 | --- | --- |
 | `unguarded` tree | `~/runs/unguarded/tree` |
-| `spec-guarded` tree | `~/runs/spec-guarded/tree` |
+| `human-guided` tree | `~/runs/human-guided/tree` |
 | template commit | `7813b73` |
 
 Trees execute **outside this repository**, each in its own parent directory containing nothing
@@ -56,7 +56,7 @@ provenance/           t=0 record: template + tree commits, dataset checksum,
                       isolation reports, and the limits of the isolation claim
 data/                 dataset notes — the data itself lives outside any git repo
 unguarded/            imported after the run
-spec-guarded/         imported after the run
+human-guided/         imported after the run
 ```
 
 ## Running a session
