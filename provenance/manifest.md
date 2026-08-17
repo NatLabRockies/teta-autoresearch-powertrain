@@ -71,6 +71,11 @@ Stated plainly, because the isolation claim should not be read as stronger than 
 - The checks are **verified, not enforced**. Nothing prevents an agent from reading an absolute
   path outside its tree; the run directories simply give it nothing to find. Enforcement would
   need a container that bind-mounts only the tree and the dataset.
+- The sibling check covers **one** directory level. The two arms live at `~/runs/unguarded/tree`
+  and `~/runs/spec-guarded/tree`, so `ls ../..` still reveals that the other arm exists — and its
+  tree is readable from there. Neither arm has any reason to look, and the post-hoc transcript
+  audit below will show whether either did, but the filesystem does not prevent it. Putting the
+  two arms under unrelated roots, or in containers, is what would.
 - The model's own pretraining is not controlled and cannot be.
 - Whoever operates a session can leak prior findings by typing them. Keep operator input to the
   session-start prompt, and record anything said beyond it.
