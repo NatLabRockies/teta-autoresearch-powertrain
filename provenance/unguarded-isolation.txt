@@ -1,0 +1,17 @@
+# isolation report — unguarded
+# captured 2026-08-17T22:54:00Z before the session started
+
+isolation check: /home/nreinick/runs/unguarded/tree
+
+  ok    tree has its own .git (git cannot walk up past it)
+  ok    history is a single commit
+  ok    no tags
+  ok    no extra branches
+  ok    no git remotes (nothing to fetch history from)
+  ok    learnings.md is empty
+  ok    results/ and plans/ are empty
+  ok    data/ resolves outside any git repo (/home/nreinick/data/routee-bev)
+  ok    no CLAUDE.md in the tree or any ancestor
+  ok    no sibling experiment trees in /home/nreinick/runs/unguarded
+
+PASS — tree is isolated
