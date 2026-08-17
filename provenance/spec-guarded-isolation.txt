@@ -1,5 +1,5 @@
 # isolation report — spec-guarded
-# captured 2026-08-17T22:57:50Z before the session started
+# captured 2026-08-17T23:11:15Z before the session started
 
 isolation check: /home/nreinick/runs/spec-guarded/tree
 

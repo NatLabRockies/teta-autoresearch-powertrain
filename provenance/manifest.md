@@ -10,7 +10,7 @@ Both trees were generated from the same template commit, by the same command mod
 | | |
 | --- | --- |
 | template | `github.com/NatLabRockies/teta-autoresearch` |
-| template commit | `939b783513af773424ee94a283f625d68cc2b66b` |
+| template commit | `7813b7398cc8c6d6cae8d1d0cffb0436094b3495` |
 
 ```bash
 tools/new_tree.sh ~/runs/unguarded/tree    --no-domain --data ~/data/routee-bev
@@ -21,8 +21,8 @@ tools/new_tree.sh ~/runs/spec-guarded/tree             --data ~/data/routee-bev
 
 | arm | scaffold commit | `domain.md` | `seed.md` |
 | --- | --- | --- | --- |
-| `unguarded` | `ac0da538dabd52aff6e27d52e51a980b2770980a` | absent | empty |
-| `spec-guarded` | `322b15ea273caf0d948c22bbf47647ab12244b2e` | present | empty |
+| `unguarded` | `6ad473b016307ff72d2c55b30393bcd1fd83ba2e` | absent | empty |
+| `spec-guarded` | `7a4eed3401b1620851db3349805fd0b987d2ca72` | present | empty |
 
 Both trees are otherwise byte-identical, including `program.md`, `fixed_utils.py`, and the
 starting `train.py`. Both produce the same baseline:
@@ -80,6 +80,25 @@ Stated plainly, because the isolation claim should not be read as stronger than 
 - Whoever operates a session can leak prior findings by typing them. Keep operator input to the
   session-start prompt, and record anything said beyond it.
 
-After the runs, the session transcripts under `~/.claude/projects/<encoded-tree-path>/` can be
-audited for file reads outside the tree root. That converts isolation from an assertion into
-evidence, and is worth doing before publishing any comparison.
+## Auditing a finished session
+
+`tools/capture_transcript.py` is the counterpart to the checks above: they establish the tree was
+clean before a session, it establishes what the session actually did.
+
+```bash
+pixi run python tools/capture_transcript.py --tag <tag>
+```
+
+It copies the raw Claude Code transcripts to `results/transcript-<tag>/` and writes
+`results/transcript-audit-<tag>.md` with three things worth reading before publishing any
+comparison:
+
+- **every path referenced outside the tree** — the direct evidence for or against the isolation
+  claim. Extraction is best-effort and over-reports (`/dev/null` and `/usr/bin` paths count), so
+  the list is a prompt to look, not a verdict.
+- **the full text of every operator prompt** — the record of how much direction each arm got.
+  If the arms were told different amounts, that is a second variable and the comparison has to
+  say so.
+- tool-call counts and the session's time span.
+
+Run it at session end, per `program.md`. Snapshots overwrite, so running it mid-session is safe.

@@ -41,7 +41,7 @@ The runs have not started. Both trees are built, verified isolated, and waiting.
 | --- | --- |
 | `unguarded` tree | `~/runs/unguarded/tree` |
 | `spec-guarded` tree | `~/runs/spec-guarded/tree` |
-| template commit | `939b783` |
+| template commit | `7813b73` |
 
 Trees execute **outside this repository**, each in its own parent directory containing nothing
 else, and are imported here with their history intact once a run completes. That is not
@@ -78,15 +78,22 @@ direction is the variable the other arm is supposed to isolate — if you do say
 Every experiment is a commit and a tag, so a finished run is fully addressable:
 
 ```bash
-git tag -l                              # every experiment
-git show <tag>/exp4                     # the change itself
-cat results/results-<tag>.tsv           # metrics, one row per experiment
-cat results/experiments-<tag>.jsonl     # hypothesis, observation, reasoning
+git tag -l                                 # every experiment
+git show <tag>/exp4                        # the change itself
+cat results/results-<tag>.tsv              # metrics, one row per experiment
+cat results/experiments-<tag>.jsonl        # hypothesis, observation, reasoning
+cat results/transcript-audit-<tag>.md      # how the session actually ran
+cat results/usage-<tag>.jsonl              # token cost
 ```
 
 The JSONL is the interesting one. Each entry records a hypothesis written *before* the run and
 an observation written after, so where an agent decided to reach outside the rules, its stated
 justification is on the record in its own words.
+
+The transcript audit is the honest one. It lists every path the session touched outside its tree
+and every word the operator typed, which is how the isolation claim and the "no direction" claim
+get checked rather than asserted. Raw transcripts sit alongside it in
+`results/transcript-<tag>/`.
 
 ## Acknowledgments
 
