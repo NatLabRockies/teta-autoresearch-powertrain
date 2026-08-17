@@ -15,11 +15,6 @@ Both trees reach the dataset through a symlink, so wherever that symlink lands i
 inside a run. If it lands inside a git repository, `git -C data log` and `git -C data tag -l`
 expose that repository's entire history from within a tree that is otherwise isolated.
 
-That was not hypothetical. Before this study, the dataset was symlinked into a working repo, and
-a tree could read 307 commits and 40 tags from it — including `apr13/milestone-prev-speed` and
-`apr13/milestone-energy-filter`, which name the precise findings a fresh run is meant to reach on
-its own.
-
 `tools/verify_isolation.sh` in the harness checks for this, and `tools/new_tree.sh` warns at
 creation time if `--data` resolves inside a repository.
 
