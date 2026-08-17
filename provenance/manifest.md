@@ -10,7 +10,7 @@ Both trees were generated from the same template commit, by the same command mod
 | | |
 | --- | --- |
 | template | `github.com/NatLabRockies/teta-autoresearch` |
-| template commit | `c918940e6fc6390d802cb7dd0fff0fa3610005c0` |
+| template commit | `939b783513af773424ee94a283f625d68cc2b66b` |
 
 ```bash
 tools/new_tree.sh ~/runs/unguarded/tree    --no-domain --data ~/data/routee-bev
@@ -21,8 +21,8 @@ tools/new_tree.sh ~/runs/spec-guarded/tree             --data ~/data/routee-bev
 
 | arm | scaffold commit | `domain.md` | `seed.md` |
 | --- | --- | --- | --- |
-| `unguarded` | `845374820cae350ea84a6ff915a7aed565bb3af5` | absent | empty |
-| `spec-guarded` | `25ab857fe7f21d5b696b35ecf0361a938183bb87` | present | empty |
+| `unguarded` | `ac0da538dabd52aff6e27d52e51a980b2770980a` | absent | empty |
+| `spec-guarded` | `322b15ea273caf0d948c22bbf47647ab12244b2e` | present | empty |
 
 Both trees are otherwise byte-identical, including `program.md`, `fixed_utils.py`, and the
 starting `train.py`. Both produce the same baseline:
