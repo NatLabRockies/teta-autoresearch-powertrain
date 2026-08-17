@@ -10,7 +10,7 @@ Both trees were generated from the same template commit, by the same command mod
 | | |
 | --- | --- |
 | template | `github.com/NatLabRockies/teta-autoresearch` |
-| template commit | `7813b7398cc8c6d6cae8d1d0cffb0436094b3495` |
+| template commit | `e545796abf379630bec1ab73f919f3d0dc658310` |
 
 ```bash
 tools/new_tree.sh ~/runs/unguarded/tree    --no-domain --data ~/data/routee-bev
@@ -21,8 +21,8 @@ tools/new_tree.sh ~/runs/human-guided/tree             --data ~/data/routee-bev
 
 | arm | scaffold commit | `domain.md` | `seed.md` |
 | --- | --- | --- | --- |
-| `unguarded` | `6ad473b016307ff72d2c55b30393bcd1fd83ba2e` | absent | empty |
-| `human-guided` | `7a4eed3401b1620851db3349805fd0b987d2ca72` | present | empty |
+| `unguarded` | `c04621d609b1b4214558a359f1db78eb1735dd90` | absent | empty |
+| `human-guided` | `4a9b58f996fa7504a6a593702428d1e38150edc1` | present | empty |
 
 Both trees are otherwise byte-identical, including `program.md`, `fixed_utils.py`, and the
 starting `train.py`. Both produce the same baseline:
@@ -102,3 +102,17 @@ comparison:
 - tool-call counts and the session's time span.
 
 Run it at session end, per `program.md`. Snapshots overwrite, so running it mid-session is safe.
+
+**Scope the audit with `--since`.** The `unguarded` tree path already hosted two aborted setup
+attempts before its reset, and Claude Code keys transcripts by directory, so those records still
+sit alongside whatever the real run writes. Unwindowed, they get folded in — measured at 48
+assistant messages across 3 transcript files, of which only one belonged to the current tree.
+Pass the scaffold commit's date and the audit reports how many records it excluded:
+
+```bash
+pixi run python tools/capture_transcript.py --tag <tag> \
+    --since "$(git log -1 --format=%aI $(git rev-list --max-parents=0 HEAD))"
+```
+
+The pre-reset transcripts were deliberately left in place rather than deleted — they are the
+harness's own records, and a filter is the honest way to exclude them.

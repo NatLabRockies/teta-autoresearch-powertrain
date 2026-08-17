@@ -41,7 +41,7 @@ The runs have not started. Both trees are built, verified isolated, and waiting.
 | --- | --- |
 | `unguarded` tree | `~/runs/unguarded/tree` |
 | `human-guided` tree | `~/runs/human-guided/tree` |
-| template commit | `7813b73` |
+| template commit | `e545796` |
 
 Trees execute **outside this repository**, each in its own parent directory containing nothing
 else, and are imported here with their history intact once a run completes. That is not
