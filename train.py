@@ -22,6 +22,7 @@ LINK_FEATURES = [
     "grade_percent",
     "miles",
     "dke_per_mile",
+    "v_in",
 ]
 
 TARGET = "energy_rate_gge"
@@ -39,11 +40,17 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     nothing in the instantaneous (speed, grade, length) triple can express.
     A trip begins and ends at rest, so the missing neighbour at each end is
     filled with a speed of 0 rather than imputed.
+
+    `v_in` is that entry speed on its own. Regeneration recovers only part of
+    the braking energy while acceleration costs more than the kinetic energy it
+    buys, so a given `dke_per_mile` is not worth the same amount of energy at
+    every entry speed, and the signed difference alone cannot say which.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
     v_out = by_journey.shift(-1).fillna(0.0)
     df["dke_per_mile"] = (v_out**2 - v_in**2) / df["miles"]
+    df["v_in"] = v_in
     return df
 
 
