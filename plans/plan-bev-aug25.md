@@ -97,3 +97,4 @@ Anything else is a **discard**. Over-budget runs (>10 min of training) are a `cr
 Updated after each experiment. Format:
 `- [x] expN: description -> <metric>=<value>, <metric>=<value> (status)`
 - [x] exp0: baseline RF -> rmse=0.013345, trip_rmse=0.003037 (keep) [7.1s of 600s budget; R^2~0.115]
+- [x] exp1: RF -> HistGradientBoosting (same 3 features) -> rmse=0.013343, trip_rmse=0.003038 (discard) [dead tie: 3 features are the ceiling, not capacity]
