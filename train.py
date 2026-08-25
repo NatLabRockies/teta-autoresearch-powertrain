@@ -28,6 +28,7 @@ LINK_FEATURES = [
     "next_miles",
     "next_gap_seconds",
     "prev2_speed",
+    "dv_out",
 ]
 
 TARGET = "energy_rate_gge"
@@ -69,6 +70,11 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     profile* -- whether the vehicle was already slowing for a while or arrived
     at speed -- which the immediate neighbour cannot say. Its exit-side mirror
     is worth four times less, the same entry/exit asymmetry seen throughout.
+
+    `dv_out` is the exit speed change on a raw scale rather than per mile.
+    Regenerative braking is limited by the motor, so how much of a deceleration
+    can be recovered depends on the speed drop itself, not on the drop divided
+    by the distance it happened over.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
@@ -76,6 +82,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["dke_per_mile"] = (v_out**2 - v_in**2) / df["miles"]
     df["dke_in_link"] = (df["speed_mph"] ** 2 - v_in**2) / df["miles"]
     df["prev2_speed"] = by_journey.shift(2)
+    df["dv_out"] = v_out - df["speed_mph"]
     by_miles = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = by_miles.shift(1)
     df["next_miles"] = by_miles.shift(-1)
