@@ -117,3 +117,4 @@ Updated after each experiment. Format:
 - [x] exp18: estimate the journey effect from the model's training residuals as a post-hoc additive offset, replacing the two journey mean-rate features -> rmse=0.005048, trip_rmse=0.001391 (discard) [rmse +0.64%, trip -20.65%]
 - [x] exp19: add the residual journey offset on top of the journey mean-rate features (rather than instead of them) -> rmse=0.005020, trip_rmse=0.001467 (keep) [rmse +0.08%, trip -16.32%]
 - [x] exp20: estimate the journey offset from 2-fold out-of-fold residuals instead of in-sample ones -> rmse=0.005021, trip_rmse=0.001418 (keep) [rmse +0.02%, trip -3.34%]
+- [x] exp21: add dke_out_link, the exit half of the kinetic-energy change -> rmse=0.005014, trip_rmse=0.001419 (discard) [rmse -0.14%, trip +0.07%]
