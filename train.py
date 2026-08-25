@@ -29,6 +29,7 @@ LINK_FEATURES = [
     "next_gap_seconds",
     "prev2_speed",
     "dv_out",
+    "journey_rate",
 ]
 
 TARGET = "energy_rate_gge"
@@ -93,6 +94,40 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+# Strength of the shrink toward the global mean, in links. A journey needs
+# roughly this many training links before its own mean is trusted over the
+# population mean.
+JOURNEY_PRIOR_LINKS = 20.0
+
+
+def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
+    """Give every link its own journey's mean rate, from training links only.
+
+    Two trips over the same roads do not cost the same energy: ambient
+    temperature, cabin heating, payload and how hard the driver pushes are all
+    constant within a trip and invisible to any per-link feature. The harness
+    splits rows rather than journeys, so each journey has training links whose
+    labels are legitimately available, and their mean is a direct estimate of
+    that trip-constant offset.
+
+    A training link would otherwise see its own target, so its own contribution
+    is removed leave-one-out. Both sides shrink toward the global mean, which
+    also covers a test link whose journey has no training links at all.
+    """
+    stats = train_df.groupby("journey_id")[TARGET].agg(["sum", "count"])
+    prior = float(train_df[TARGET].mean())
+    k = JOURNEY_PRIOR_LINKS
+
+    own = train_df["journey_id"].map(stats["sum"]).to_numpy()
+    n = train_df["journey_id"].map(stats["count"]).to_numpy()
+    y = train_df[TARGET].to_numpy()
+    train_df["journey_rate"] = (own - y + k * prior) / (n - 1 + k)
+
+    own = test_df["journey_id"].map(stats["sum"]).fillna(0.0).to_numpy()
+    n = test_df["journey_id"].map(stats["count"]).fillna(0.0).to_numpy()
+    test_df["journey_rate"] = (own + k * prior) / (n + k)
+
+
 def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
     # sort by journey and time
@@ -117,6 +152,7 @@ def train_model() -> dict[str, float]:
 
     df = load_data()
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
+    add_journey_effect(train_df, test_df)
 
     y_train = train_df[TARGET].to_numpy(dtype=np.float32)
     y_test = test_df[TARGET].to_numpy(dtype=np.float32)
