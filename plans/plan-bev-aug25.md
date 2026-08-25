@@ -107,3 +107,4 @@ Updated after each experiment. Format:
 - [x] exp8: add prev_miles, the length of the previous link -> rmse=0.005837, trip_rmse=0.002065 (keep) [rmse -7.88%, trip -1.62%]
 - [x] exp9: add next_miles, the length of the next link -> rmse=0.005748, trip_rmse=0.002064 (keep) [rmse -1.52%, trip -0.05%]
 - [x] exp10: add next_gap_seconds, the idle time after the link -> rmse=0.005625, trip_rmse=0.002062 (keep) [rmse -2.14%, trip -0.10%]
+- [x] exp11: raise max_iter 300 -> 2000 -> rmse=0.005360, trip_rmse=0.001985 (keep) [rmse -4.71%, trip -3.73%]
