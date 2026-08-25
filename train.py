@@ -23,6 +23,7 @@ LINK_FEATURES = [
     "miles",
     "dke_per_mile",
     "dke_in_link",
+    "gap_seconds",
 ]
 
 TARGET = "energy_rate_gge"
@@ -46,12 +47,19 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     link the speed changed, which matters because accelerating and regenerating
     are not the same price: a link that speeds up then slows down burns energy
     even when its net kinetic-energy change is zero.
+
+    `gap_seconds` is the idle time between the previous link ending and this one
+    starting. A non-zero gap means the vehicle actually came to a stop, so the
+    entry speed was really 0 and the whole entry kinetic energy had to be
+    rebuilt -- something the previous link's *average* speed cannot reveal.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
     v_out = by_journey.shift(-1).fillna(0.0)
     df["dke_per_mile"] = (v_out**2 - v_in**2) / df["miles"]
     df["dke_in_link"] = (df["speed_mph"] ** 2 - v_in**2) / df["miles"]
+    prev_end = df.groupby("journey_id", sort=False)["link_end_time"].shift(1)
+    df["gap_seconds"] = df["link_start_time"] - prev_end
     return df
 
 
