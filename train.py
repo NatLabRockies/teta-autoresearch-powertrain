@@ -21,6 +21,7 @@ LINK_FEATURES = [
     "speed_mph",
     "grade_percent",
     "miles",
+    "dke_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
@@ -29,10 +30,28 @@ TARGET = "energy_rate_gge"
 DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 
 
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Derive link features that need the journey's link sequence.
+
+    `dke_per_mile` is the specific kinetic-energy change across a link,
+    (v_out^2 - v_in^2) / distance, using the neighbouring links' speeds as the
+    entry/exit speeds. It is the acceleration term of the energy balance, which
+    nothing in the instantaneous (speed, grade, length) triple can express.
+    A trip begins and ends at rest, so the missing neighbour at each end is
+    filled with a speed of 0 rather than imputed.
+    """
+    by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
+    v_in = by_journey.shift(1).fillna(0.0)
+    v_out = by_journey.shift(-1).fillna(0.0)
+    df["dke_per_mile"] = (v_out**2 - v_in**2) / df["miles"]
+    return df
+
+
 def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
     # sort by journey and time
-    return df.sort_values(["journey_id", "link_start_time"])
+    df = df.sort_values(["journey_id", "link_start_time"])
+    return add_features(df)
 
 
 def build_model() -> RandomForestRegressor:
