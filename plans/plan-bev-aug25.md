@@ -112,3 +112,4 @@ Updated after each experiment. Format:
 - [x] exp13: add prev2_speed, the speed two links back -> rmse=0.005114, trip_rmse=0.001958 (keep) [rmse -4.59%, trip -1.36%]
 - [x] exp14: add dv_out, the exit speed change on a raw scale rather than per mile -> rmse=0.005064, trip_rmse=0.001951 (keep) [rmse -0.98%, trip -0.36%]
 - [x] exp15: replace the GBDT with a dilated 1-D CNN reading the whole journey link sequence (same 11 features, +/-30 link receptive field, 431s on GPU) -> rmse=0.006440, trip_rmse=0.002078 (discard) [rmse +27.17%, trip +6.51%]
+- [x] exp16: add journey_rate, a leave-one-out shrunk mean of the journey's training-link rates -> rmse=0.005041, trip_rmse=0.001814 (keep) [rmse -0.45%, trip -7.02%]
