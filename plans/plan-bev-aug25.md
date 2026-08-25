@@ -105,3 +105,4 @@ Updated after each experiment. Format:
 - [x] exp6: add dke_in_link, the entry-half of the kinetic-energy change ((v^2 - v_in^2)/miles) -> rmse=0.006653, trip_rmse=0.002147 (keep) [rmse -6.70%, trip -2.63%]
 - [x] exp7: add gap_seconds, the idle time between the previous link ending and this one starting -> rmse=0.006336, trip_rmse=0.002099 (keep) [rmse -4.76%, trip -2.24%]
 - [x] exp8: add prev_miles, the length of the previous link -> rmse=0.005837, trip_rmse=0.002065 (keep) [rmse -7.88%, trip -1.62%]
+- [x] exp9: add next_miles, the length of the next link -> rmse=0.005748, trip_rmse=0.002064 (keep) [rmse -1.52%, trip -0.05%]
