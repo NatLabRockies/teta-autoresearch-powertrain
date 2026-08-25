@@ -147,6 +147,25 @@ def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     test_df["journey_gge_per_mile"] = (own_e + k_miles * prior_gge) / (own_d + k_miles)
 
 
+def journey_offset(
+    train_df: pd.DataFrame, test_df: pd.DataFrame, residual: np.ndarray
+) -> np.ndarray:
+    """Per-journey correction for whatever the fitted model still gets wrong.
+
+    The journey features above hand the model the trip's mean rate, but a
+    boosted tree can only use it as one more split variable; it cannot apply it
+    as an exact per-trip shift. The mean training residual of a journey is that
+    leftover shift, measured after the model has done its best. Shrinking toward
+    zero keeps a journey with two training links from moving on noise, and
+    leaves a journey with none alone.
+    """
+    by_journey = pd.Series(residual).groupby(train_df["journey_id"].to_numpy())
+    j = test_df["journey_id"]
+    return j.map(by_journey.sum()).fillna(0.0).to_numpy() / (
+        j.map(by_journey.count()).fillna(0.0).to_numpy() + JOURNEY_PRIOR_LINKS
+    )
+
+
 def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
     # sort by journey and time
@@ -180,7 +199,10 @@ def train_model() -> dict[str, float]:
 
     model = build_model()
     model.fit(train_df[LINK_FEATURES], y_train)
-    predicted = model.predict(test_df[LINK_FEATURES])
+    residual = y_train - model.predict(train_df[LINK_FEATURES])
+    predicted = model.predict(test_df[LINK_FEATURES]) + journey_offset(
+        train_df, test_df, residual
+    )
 
     results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
 
