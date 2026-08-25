@@ -11,3 +11,4 @@ ab26827	GBDT	0.006336	0.002099	keep	speed_mph,grade_percent,miles,dke_per_mile,d
 1491bef	GBDT	0.005748	0.002064	keep	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link,gap_seconds,prev_miles,next_miles	add next_miles, the length of the next link
 7b08ce5	GBDT	0.005625	0.002062	keep	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link,gap_seconds,prev_miles,next_miles,next_gap_seconds	add next_gap_seconds, the idle time after the link
 76e423b	GBDT	0.005360	0.001985	keep	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link,gap_seconds,prev_miles,next_miles,next_gap_seconds	raise max_iter 300 -> 2000
+da8388c	GBDT	0.005379	0.001975	discard	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link,gap_seconds,prev_miles,next_miles,next_gap_seconds	raise max_iter 2000 -> 8000

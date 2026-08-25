@@ -88,7 +88,7 @@ def load_data() -> pd.DataFrame:
 
 def build_model() -> HistGradientBoostingRegressor:
     model_params = {
-        "max_iter": 8000,
+        "max_iter": 2000,
         "learning_rate": 0.1,
         "max_leaf_nodes": 31,
         "early_stopping": False,
