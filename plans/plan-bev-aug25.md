@@ -103,3 +103,4 @@ Updated after each experiment. Format:
 - [x] exp4: swap RandomForest for HistGradientBoosting (identical config to exp1, now with dke_per_mile present) -> rmse=0.007131, trip_rmse=0.002205 (keep) [rmse -2.54%, trip -5.32%]
 - [x] exp5: raise max_leaf_nodes 31 -> 255 -> rmse=0.007163, trip_rmse=0.002191 (discard) [rmse +0.45%, trip -0.63%]
 - [x] exp6: add dke_in_link, the entry-half of the kinetic-energy change ((v^2 - v_in^2)/miles) -> rmse=0.006653, trip_rmse=0.002147 (keep) [rmse -6.70%, trip -2.63%]
+- [x] exp7: add gap_seconds, the idle time between the previous link ending and this one starting -> rmse=0.006336, trip_rmse=0.002099 (keep) [rmse -4.76%, trip -2.24%]
