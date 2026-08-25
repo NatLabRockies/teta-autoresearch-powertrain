@@ -29,6 +29,8 @@ LINK_FEATURES = [
     "next_gap_seconds",
     "prev2_speed",
     "dv_out",
+    "journey_rate",
+    "journey_gge_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
@@ -93,36 +95,56 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# Strength of the shrink toward zero, in links. A journey needs roughly this
-# many training links before its own residual is trusted over no correction.
+# Strength of the shrink toward the global mean, in links. A journey needs
+# roughly this many training links before its own mean is trusted over the
+# population mean.
 JOURNEY_PRIOR_LINKS = 20.0
 
 
-def journey_offset(
-    train_df: pd.DataFrame, test_df: pd.DataFrame, residual: np.ndarray
-) -> np.ndarray:
-    """Per-journey correction, estimated from the model's training residuals.
+def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
+    """Give every link its own journey's mean rate, from training links only.
 
     Two trips over the same roads do not cost the same energy: ambient
     temperature, cabin heating, payload and how hard the driver pushes are all
     constant within a trip and invisible to any per-link feature. The harness
-    splits rows rather than journeys, so every journey has training links whose
-    labels are legitimately available.
+    splits rows rather than journeys, so each journey has training links whose
+    labels are legitimately available, and their mean is a direct estimate of
+    that trip-constant offset.
 
-    What those links should contribute is not their mean rate -- that is mostly
-    the trip's road and speed mix, which the model already explains -- but their
-    mean *residual*, which is what the per-link features could not account for.
-    Shrinking toward zero by `JOURNEY_PRIOR_LINKS` keeps a journey with two
-    training links from moving on noise, and leaves a journey with none alone.
+    A training link would otherwise see its own target, so its own contribution
+    is removed leave-one-out. Both sides shrink toward the global mean, which
+    also covers a test link whose journey has no training links at all.
+
+    `journey_gge_per_mile` is the same offset weighted by distance -- the
+    journey's training energy divided by its training miles. It is the quantity
+    the trip metric actually sums, and it down-weights the very short links
+    whose rate is a ratio with a tiny denominator.
     """
-    by_journey = pd.Series(residual).groupby(train_df["journey_id"].to_numpy())
-    total = by_journey.sum()
-    count = by_journey.count()
-    j = test_df["journey_id"]
-    return (
-        j.map(total).fillna(0.0).to_numpy()
-        / (j.map(count).fillna(0.0).to_numpy() + JOURNEY_PRIOR_LINKS)
+    stats = train_df.groupby("journey_id")[TARGET].agg(["sum", "count"])
+    gge = train_df.groupby("journey_id")[["energy_gge", "miles"]].sum()
+    prior = float(train_df[TARGET].mean())
+    prior_gge = float(train_df["energy_gge"].sum() / train_df["miles"].sum())
+    k = JOURNEY_PRIOR_LINKS
+    k_miles = JOURNEY_PRIOR_LINKS * float(train_df["miles"].mean())
+
+    own = train_df["journey_id"].map(stats["sum"]).to_numpy()
+    n = train_df["journey_id"].map(stats["count"]).to_numpy()
+    y = train_df[TARGET].to_numpy()
+    train_df["journey_rate"] = (own - y + k * prior) / (n - 1 + k)
+    e = train_df["energy_gge"].to_numpy()
+    d = train_df["miles"].to_numpy()
+    own_e = train_df["journey_id"].map(gge["energy_gge"]).to_numpy()
+    own_d = train_df["journey_id"].map(gge["miles"]).to_numpy()
+    train_df["journey_gge_per_mile"] = (own_e - e + k_miles * prior_gge) / (
+        own_d - d + k_miles
     )
+
+    own = test_df["journey_id"].map(stats["sum"]).fillna(0.0).to_numpy()
+    n = test_df["journey_id"].map(stats["count"]).fillna(0.0).to_numpy()
+    test_df["journey_rate"] = (own + k * prior) / (n + k)
+    own_e = test_df["journey_id"].map(gge["energy_gge"]).fillna(0.0).to_numpy()
+    own_d = test_df["journey_id"].map(gge["miles"]).fillna(0.0).to_numpy()
+    test_df["journey_gge_per_mile"] = (own_e + k_miles * prior_gge) / (own_d + k_miles)
 
 
 def load_data() -> pd.DataFrame:
@@ -149,6 +171,7 @@ def train_model() -> dict[str, float]:
 
     df = load_data()
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
+    add_journey_effect(train_df, test_df)
 
     y_train = train_df[TARGET].to_numpy(dtype=np.float32)
     y_test = test_df[TARGET].to_numpy(dtype=np.float32)
@@ -157,10 +180,7 @@ def train_model() -> dict[str, float]:
 
     model = build_model()
     model.fit(train_df[LINK_FEATURES], y_train)
-    residual = y_train - model.predict(train_df[LINK_FEATURES])
-    predicted = model.predict(test_df[LINK_FEATURES]) + journey_offset(
-        train_df, test_df, residual
-    )
+    predicted = model.predict(test_df[LINK_FEATURES])
 
     results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
 

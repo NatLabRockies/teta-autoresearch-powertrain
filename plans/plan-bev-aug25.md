@@ -114,3 +114,4 @@ Updated after each experiment. Format:
 - [x] exp15: replace the GBDT with a dilated 1-D CNN reading the whole journey link sequence (same 11 features, +/-30 link receptive field, 431s on GPU) -> rmse=0.006440, trip_rmse=0.002078 (discard) [rmse +27.17%, trip +6.51%]
 - [x] exp16: add journey_rate, a leave-one-out shrunk mean of the journey's training-link rates -> rmse=0.005041, trip_rmse=0.001814 (keep) [rmse -0.45%, trip -7.02%]
 - [x] exp17: add journey_gge_per_mile, the distance-weighted version of the journey offset -> rmse=0.005016, trip_rmse=0.001753 (keep) [rmse -0.50%, trip -3.36%]
+- [x] exp18: estimate the journey effect from the model's training residuals as a post-hoc additive offset, replacing the two journey mean-rate features -> rmse=0.005048, trip_rmse=0.001391 (discard) [rmse +0.64%, trip -20.65%]
