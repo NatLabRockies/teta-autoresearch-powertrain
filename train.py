@@ -22,6 +22,7 @@ LINK_FEATURES = [
     "grade_percent",
     "miles",
     "dke_per_mile",
+    "dke_in_link",
 ]
 
 TARGET = "energy_rate_gge"
@@ -39,11 +40,18 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     nothing in the instantaneous (speed, grade, length) triple can express.
     A trip begins and ends at rest, so the missing neighbour at each end is
     filled with a speed of 0 rather than imputed.
+
+    `dke_in_link` is the first half of that change, from the entry speed up to
+    the link's own speed. Together with the total it locates where inside the
+    link the speed changed, which matters because accelerating and regenerating
+    are not the same price: a link that speeds up then slows down burns energy
+    even when its net kinetic-energy change is zero.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
     v_out = by_journey.shift(-1).fillna(0.0)
     df["dke_per_mile"] = (v_out**2 - v_in**2) / df["miles"]
+    df["dke_in_link"] = (df["speed_mph"] ** 2 - v_in**2) / df["miles"]
     return df
 
 
