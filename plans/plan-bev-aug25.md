@@ -101,3 +101,4 @@ Updated after each experiment. Format:
 - [x] exp2: add dke_per_mile = (v_next^2 - v_prev^2)/miles from neighbour link speeds -> rmse=0.007317, trip_rmse=0.002329 (keep) [rmse -45.17%, trip -23.31%]
 - [x] exp3: add v_in (entry speed from the previous link) -> rmse=0.007192, trip_rmse=0.002335 (discard) [rmse -1.71%, trip +0.26%]
 - [x] exp4: swap RandomForest for HistGradientBoosting (identical config to exp1, now with dke_per_mile present) -> rmse=0.007131, trip_rmse=0.002205 (keep) [rmse -2.54%, trip -5.32%]
+- [x] exp5: raise max_leaf_nodes 31 -> 255 -> rmse=0.007163, trip_rmse=0.002191 (discard) [rmse +0.45%, trip -0.63%]

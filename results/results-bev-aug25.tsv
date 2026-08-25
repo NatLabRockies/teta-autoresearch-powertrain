@@ -4,3 +4,4 @@ commit	model_family	rmse	trip_rmse	status	features	description
 274605a	RandomForest	0.007317	0.002329	keep	speed_mph,grade_percent,miles,dke_per_mile	add dke_per_mile = (v_next^2 - v_prev^2)/miles from neighbour link speeds
 e9b92ca	RandomForest	0.007192	0.002335	discard	speed_mph,grade_percent,miles,dke_per_mile,v_in	add v_in (entry speed from the previous link)
 e999783	GBDT	0.007131	0.002205	keep	speed_mph,grade_percent,miles,dke_per_mile	swap RandomForest for HistGradientBoosting (identical config to exp1, now with dke_per_mile present)
+c453af9	GBDT	0.007163	0.002191	discard	speed_mph,grade_percent,miles,dke_per_mile	raise max_leaf_nodes 31 -> 255
