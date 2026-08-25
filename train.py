@@ -26,6 +26,7 @@ LINK_FEATURES = [
     "gap_seconds",
     "prev_miles",
     "next_miles",
+    "next_gap_seconds",
 ]
 
 TARGET = "energy_rate_gge"
@@ -59,7 +60,9 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     entry speed change had to happen over: the same entry speed reached across
     a mile and across fifty feet are different accelerations, and the energy
     cost of a speed change depends on the distance it is spread across.
-    `next_miles` is the same quantity for the exit side.
+    `next_miles` is the same quantity for the exit side. `next_gap_seconds` is
+    the exit-side mirror of `gap_seconds`: a stop *after* this link means the
+    vehicle braked all the way to rest on it, so the exit speed was really 0.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
@@ -71,6 +74,8 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["next_miles"] = by_miles.shift(-1)
     prev_end = df.groupby("journey_id", sort=False)["link_end_time"].shift(1)
     df["gap_seconds"] = df["link_start_time"] - prev_end
+    next_start = df.groupby("journey_id", sort=False)["link_start_time"].shift(-1)
+    df["next_gap_seconds"] = next_start - df["link_end_time"]
     return df
 
 
