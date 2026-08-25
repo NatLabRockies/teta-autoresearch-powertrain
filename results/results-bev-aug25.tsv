@@ -7,3 +7,4 @@ e999783	GBDT	0.007131	0.002205	keep	speed_mph,grade_percent,miles,dke_per_mile	s
 c453af9	GBDT	0.007163	0.002191	discard	speed_mph,grade_percent,miles,dke_per_mile	raise max_leaf_nodes 31 -> 255
 6699728	GBDT	0.006653	0.002147	keep	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link	add dke_in_link, the entry-half of the kinetic-energy change ((v^2 - v_in^2)/miles)
 ab26827	GBDT	0.006336	0.002099	keep	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link,gap_seconds	add gap_seconds, the idle time between the previous link ending and this one starting
+32be6a9	GBDT	0.005837	0.002065	keep	speed_mph,grade_percent,miles,dke_per_mile,dke_in_link,gap_seconds,prev_miles	add prev_miles, the length of the previous link
