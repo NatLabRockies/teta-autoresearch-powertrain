@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teta-autoresearch"
+version = "0.1.0"
+license = "BSD-3-Clause"
+description = "Template for LLM-agent-driven autoresearch experiments."
+requires-python = ">=3.13"
+
+[tool.setuptools]
+py-modules = ["harness"]
+
+[tool.mypy]
+files = ["harness.py", "train.py", "tools"]
+ignore_missing_imports = true
