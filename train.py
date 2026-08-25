@@ -30,6 +30,7 @@ LINK_FEATURES = [
     "prev2_speed",
     "dv_out",
     "journey_rate",
+    "journey_gge_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
@@ -113,19 +114,37 @@ def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     A training link would otherwise see its own target, so its own contribution
     is removed leave-one-out. Both sides shrink toward the global mean, which
     also covers a test link whose journey has no training links at all.
+
+    `journey_gge_per_mile` is the same offset weighted by distance -- the
+    journey's training energy divided by its training miles. It is the quantity
+    the trip metric actually sums, and it down-weights the very short links
+    whose rate is a ratio with a tiny denominator.
     """
     stats = train_df.groupby("journey_id")[TARGET].agg(["sum", "count"])
+    gge = train_df.groupby("journey_id")[["energy_gge", "miles"]].sum()
     prior = float(train_df[TARGET].mean())
+    prior_gge = float(train_df["energy_gge"].sum() / train_df["miles"].sum())
     k = JOURNEY_PRIOR_LINKS
+    k_miles = JOURNEY_PRIOR_LINKS * float(train_df["miles"].mean())
 
     own = train_df["journey_id"].map(stats["sum"]).to_numpy()
     n = train_df["journey_id"].map(stats["count"]).to_numpy()
     y = train_df[TARGET].to_numpy()
     train_df["journey_rate"] = (own - y + k * prior) / (n - 1 + k)
+    e = train_df["energy_gge"].to_numpy()
+    d = train_df["miles"].to_numpy()
+    own_e = train_df["journey_id"].map(gge["energy_gge"]).to_numpy()
+    own_d = train_df["journey_id"].map(gge["miles"]).to_numpy()
+    train_df["journey_gge_per_mile"] = (own_e - e + k_miles * prior_gge) / (
+        own_d - d + k_miles
+    )
 
     own = test_df["journey_id"].map(stats["sum"]).fillna(0.0).to_numpy()
     n = test_df["journey_id"].map(stats["count"]).fillna(0.0).to_numpy()
     test_df["journey_rate"] = (own + k * prior) / (n + k)
+    own_e = test_df["journey_id"].map(gge["energy_gge"]).fillna(0.0).to_numpy()
+    own_d = test_df["journey_id"].map(gge["miles"]).fillna(0.0).to_numpy()
+    test_df["journey_gge_per_mile"] = (own_e + k_miles * prior_gge) / (own_d + k_miles)
 
 
 def load_data() -> pd.DataFrame:
