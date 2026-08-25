@@ -27,6 +27,7 @@ LINK_FEATURES = [
     "prev_miles",
     "next_miles",
     "next_gap_seconds",
+    "prev2_speed",
 ]
 
 TARGET = "energy_rate_gge"
@@ -63,12 +64,18 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     `next_miles` is the same quantity for the exit side. `next_gap_seconds` is
     the exit-side mirror of `gap_seconds`: a stop *after* this link means the
     vehicle braked all the way to rest on it, so the exit speed was really 0.
+
+    `prev2_speed` is the speed two links back. It describes the *approach
+    profile* -- whether the vehicle was already slowing for a while or arrived
+    at speed -- which the immediate neighbour cannot say. Its exit-side mirror
+    is worth four times less, the same entry/exit asymmetry seen throughout.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
     v_out = by_journey.shift(-1).fillna(0.0)
     df["dke_per_mile"] = (v_out**2 - v_in**2) / df["miles"]
     df["dke_in_link"] = (df["speed_mph"] ** 2 - v_in**2) / df["miles"]
+    df["prev2_speed"] = by_journey.shift(2)
     by_miles = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = by_miles.shift(1)
     df["next_miles"] = by_miles.shift(-1)
