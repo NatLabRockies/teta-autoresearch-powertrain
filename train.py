@@ -29,6 +29,7 @@ LINK_FEATURES = [
     "next_gap_seconds",
     "prev2_speed",
     "dv_out",
+    "dke_out_link",
     "journey_rate",
     "journey_gge_per_mile",
 ]
@@ -77,6 +78,11 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     Regenerative braking is limited by the motor, so how much of a deceleration
     can be recovered depends on the speed drop itself, not on the drop divided
     by the distance it happened over.
+
+    `dke_out_link` completes the split: the exit half of the kinetic-energy
+    change, from the link's own speed to the exit speed. A boosted tree cannot
+    subtract two of its inputs, so having the total and both halves present is
+    not redundant to it.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
@@ -85,6 +91,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["dke_in_link"] = (df["speed_mph"] ** 2 - v_in**2) / df["miles"]
     df["prev2_speed"] = by_journey.shift(2)
     df["dv_out"] = v_out - df["speed_mph"]
+    df["dke_out_link"] = (v_out**2 - df["speed_mph"] ** 2) / df["miles"]
     by_miles = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = by_miles.shift(1)
     df["next_miles"] = by_miles.shift(-1)
