@@ -3,6 +3,7 @@ import time
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.linear_model import LinearRegression
 
 from harness import (
     evaluate,
@@ -32,6 +33,12 @@ LINK_FEATURES = [
     "journey_rate",
     "journey_gge_per_mile",
 ]
+
+# The terms the energy balance says enter linearly: potential energy is
+# proportional to grade, kinetic energy to the speed-squared differences. None
+# of them has missing values, so no imputation is needed to fit a line through
+# them.
+PHYSICS_FEATURES = ["grade_percent", "dke_per_mile", "dke_in_link", "speed_mph"]
 
 TARGET = "energy_rate_gge"
 
@@ -159,7 +166,7 @@ def out_of_fold_residual(train_df: pd.DataFrame, y_train: np.ndarray) -> np.ndar
     residual = np.empty(len(train_df), dtype=np.float64)
     for held_out in (0, 1):
         fit = fold != held_out
-        model = build_model()
+        model = PhysicsBoostedModel()
         model.fit(train_df.loc[fit, LINK_FEATURES], y_train[fit])
         rows = ~fit
         residual[rows] = y_train[rows] - model.predict(
@@ -194,6 +201,29 @@ def load_data() -> pd.DataFrame:
     return add_features(df)
 
 
+class PhysicsBoostedModel:
+    """Least squares on the physics terms, boosted trees on what it misses.
+
+    Grade and the kinetic-energy differences enter the energy balance linearly,
+    and a tree can only approximate a line as a staircase -- 2000 rounds of them
+    spend most of their capacity rebuilding a slope the closed form gives
+    exactly. Fitting the line first leaves the trees the part that is genuinely
+    non-linear.
+    """
+
+    def __init__(self) -> None:
+        self.linear = LinearRegression()
+        self.trees = build_model()
+
+    def fit(self, x: pd.DataFrame, y: np.ndarray) -> "PhysicsBoostedModel":
+        self.linear.fit(x[PHYSICS_FEATURES], y)
+        self.trees.fit(x, y - self.linear.predict(x[PHYSICS_FEATURES]))
+        return self
+
+    def predict(self, x: pd.DataFrame) -> np.ndarray:
+        return self.linear.predict(x[PHYSICS_FEATURES]) + self.trees.predict(x)
+
+
 def build_model() -> HistGradientBoostingRegressor:
     model_params = {
         "max_iter": 2000,
@@ -218,7 +248,7 @@ def train_model() -> dict[str, float]:
     journey_id_te = test_df["journey_id"].to_numpy()
     miles_te = test_df["miles"].to_numpy(dtype=np.float32)
 
-    model = build_model()
+    model = PhysicsBoostedModel()
     residual = out_of_fold_residual(train_df, y_train)
     model.fit(train_df[LINK_FEATURES], y_train)
     predicted = model.predict(test_df[LINK_FEATURES]) + journey_offset(
