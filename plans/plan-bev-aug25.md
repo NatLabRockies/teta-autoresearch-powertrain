@@ -99,3 +99,4 @@ Updated after each experiment. Format:
 - [x] exp0: baseline RF -> rmse=0.013345, trip_rmse=0.003037 (keep) [7.1s of 600s budget; R^2~0.115]
 - [x] exp1: RF -> HistGradientBoosting (same 3 features) -> rmse=0.013343, trip_rmse=0.003038 (discard) [dead tie: 3 features are the ceiling, not capacity]
 - [x] exp2: add dke_per_mile = (v_next^2 - v_prev^2)/miles from neighbour link speeds -> rmse=0.007317, trip_rmse=0.002329 (keep) [rmse -45.17%, trip -23.31%]
+- [x] exp3: add v_in (entry speed from the previous link) -> rmse=0.007192, trip_rmse=0.002335 (discard) [rmse -1.71%, trip +0.26%]
