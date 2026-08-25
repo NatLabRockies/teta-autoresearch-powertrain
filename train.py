@@ -58,7 +58,7 @@ def build_model() -> HistGradientBoostingRegressor:
     model_params = {
         "max_iter": 300,
         "learning_rate": 0.1,
-        "max_leaf_nodes": 31,
+        "max_leaf_nodes": 255,
         "early_stopping": False,
         "random_state": 52,
     }
