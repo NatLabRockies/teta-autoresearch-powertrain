@@ -2,7 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor
 
 from harness import (
     evaluate,
@@ -15,7 +15,7 @@ from harness import (
 # A coarse label for the kind of model below — "RandomForest", "MLP", "CNN",
 # "GRU", "Linear". Free text, recorded with every result so experiments can be
 # grouped by family afterwards. Keep it matched to what `build_model` returns.
-MODEL_FAMILY = "RandomForest"
+MODEL_FAMILY = "GBDT"
 
 LINK_FEATURES = [
     "speed_mph",
@@ -54,15 +54,15 @@ def load_data() -> pd.DataFrame:
     return add_features(df)
 
 
-def build_model() -> RandomForestRegressor:
+def build_model() -> HistGradientBoostingRegressor:
     model_params = {
-        "n_estimators": 20,
-        "max_depth": 10,
-        "min_samples_split": 10,
+        "max_iter": 300,
+        "learning_rate": 0.1,
+        "max_leaf_nodes": 31,
+        "early_stopping": False,
         "random_state": 52,
-        "n_jobs": -1,  # use all cores
     }
-    return RandomForestRegressor(**model_params)
+    return HistGradientBoostingRegressor(**model_params)
 
 
 def train_model() -> dict[str, float]:
