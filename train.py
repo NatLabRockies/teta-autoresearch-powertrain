@@ -147,6 +147,27 @@ def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     test_df["journey_gge_per_mile"] = (own_e + k_miles * prior_gge) / (own_d + k_miles)
 
 
+def out_of_fold_residual(train_df: pd.DataFrame, y_train: np.ndarray) -> np.ndarray:
+    """Training residuals from a model that did not see the row it is scoring.
+
+    In-sample residuals are shrunk toward zero -- the model has already fitted
+    part of the trip effect it is being asked to measure -- so a journey offset
+    built from them under-states the correction. Two folds, each scored by the
+    model fitted on the other, give an honest one.
+    """
+    fold = np.arange(len(train_df)) % 2
+    residual = np.empty(len(train_df), dtype=np.float64)
+    for held_out in (0, 1):
+        fit = fold != held_out
+        model = build_model()
+        model.fit(train_df.loc[fit, LINK_FEATURES], y_train[fit])
+        rows = ~fit
+        residual[rows] = y_train[rows] - model.predict(
+            train_df.loc[rows, LINK_FEATURES]
+        )
+    return residual
+
+
 def journey_offset(
     train_df: pd.DataFrame, test_df: pd.DataFrame, residual: np.ndarray
 ) -> np.ndarray:
@@ -198,8 +219,8 @@ def train_model() -> dict[str, float]:
     miles_te = test_df["miles"].to_numpy(dtype=np.float32)
 
     model = build_model()
+    residual = out_of_fold_residual(train_df, y_train)
     model.fit(train_df[LINK_FEATURES], y_train)
-    residual = y_train - model.predict(train_df[LINK_FEATURES])
     predicted = model.predict(test_df[LINK_FEATURES]) + journey_offset(
         train_df, test_df, residual
     )
