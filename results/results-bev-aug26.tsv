@@ -6,3 +6,4 @@ f28267d	RandomForest	0.009164	0.002990	keep	speed_mph,grade_percent,miles,prev_s
 8e738d3	RandomForest	0.008293	0.002819	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta	add explicit speed_delta = speed_mph - prev_speed_mph
 d368d8f	RandomForest	0.008210	0.002789	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile	add ke_delta_per_mile = (v^2 - v_prev^2)/(2*miles), the physics form of the acceleration term
 be6ccd2	RandomForest	0.008093	0.002757	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity	add geometry-derived sinuosity = miles / straight-line endpoint distance
+1721b51	RandomForest	0.008088	0.002756	discard	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,total_turn_degrees	add total_turn_degrees, summed absolute heading change across interior vertices (Pareto-better but discarded on simplicity)
