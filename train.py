@@ -31,6 +31,8 @@ LINK_FEATURES = [
     "prev_miles",
     "prev_sinuosity",
     "vertices_per_mile",
+    "centroid_lon",
+    "centroid_lat",
 ]
 
 TARGET = "energy_rate_gge"
@@ -81,6 +83,15 @@ def geometry_features(geometry: pd.Series) -> dict[str, np.ndarray]:
         # Bearings of the first and last segments, so the turn taken at the
         # junction between two consecutive links can be measured.
         "n_vertices": n_points.astype(np.float64),
+        # Link centroid. Legal at inference under domain.md, which lists the
+        # geometry, but see the experiment record -- this is run to measure how
+        # much region-specific signal exists, not as a candidate to keep.
+        "centroid_lon": np.add.reduceat(
+            coords[:, 0], start.astype(np.intp)
+        ) / n_points,
+        "centroid_lat": np.add.reduceat(
+            coords[:, 1], start.astype(np.intp)
+        ) / n_points,
         "entry_heading": _heading(coords, start, start + 1),
         "exit_heading": _heading(coords, end - 1, end),
     }
@@ -125,6 +136,8 @@ def load_data() -> pd.DataFrame:
     # street rather than a highway, and the exp25 diagnostic put 46% of the
     # remaining error below 23 mph.
     df["vertices_per_mile"] = geom["n_vertices"] / df["miles"]
+    df["centroid_lon"] = geom["centroid_lon"]
+    df["centroid_lat"] = geom["centroid_lat"]
     # Shape of the link the vehicle came off. A curvy preceding link means it
     # was already cornering on entry, which bears on how much of prev_speed_mph
     # actually carried through. A straight link, 1.0, is the fill for a start.
