@@ -36,7 +36,12 @@ aggregated to the segment level.
 
 `energy_rate_gge` is negative wherever regenerative braking returns energy to the battery. Those
 rows are the heavy tail, they are the hardest to predict, and deleting them is the exploit the
-guarded arm's `domain.md` forbids.
+domain-guided arm's `domain.md` forbids.
 
-`journey_id` and `miles` do double duty: both are needed by `fixed_utils.evaluate()` to roll link
+`journey_id` and `miles` do double duty: both are needed by `harness.evaluate()` to roll link
 predictions up into trip totals for `trip_rmse`.
+
+`link_start_time`, `link_end_time`, `time_seconds`, `n_points` and `energy_gge` exist only
+because the data was aggregated from simulated 1 Hz traces. None of them has an inference-time
+counterpart, which is why `audit/contract.py` gives anything derived from them its own `TRACE`
+tier rather than treating it as a memory-cost question.

@@ -81,9 +81,43 @@ a number on.
 
 ## Status
 
-Both sessions are complete and imported. The audit has been rewritten against these two trees —
-see [`audit/results/report.md`](audit/results/report.md) for the audited numbers and
-[`audit/README.md`](audit/README.md) for what it does and does not measure.
+Both sessions are complete and imported, and **the audit has been run** — see
+[`audit/results/report.md`](audit/results/report.md). Both arms' archived numbers reproduce, so
+the audited numbers below rest on a verified harness.
+
+| arm | reported rmse | audited rmse | reported trip_rmse | audited trip_rmse |
+| --- | --- | --- | --- | --- |
+| `unguided` | 0.004795 | **0.014050** | 0.001235 | **0.004096** |
+| `domain-guided` | 0.006823 | **0.006823** | 0.002237 | **0.002237** |
+
+*Audited* means the same model scored on the same held-out rows with inference-time validity
+enforced — the RouteE Compass contract in [`audit/contract.py`](audit/contract.py).
+
+The two numbers are identical for `domain-guided`, because 11 of its 11 features are available
+at inference. They come apart violently for `unguided`, because **5 of its 13** are: its score
+moves +193% link and +232% trip once the unavailable inputs are withdrawn, landing *worse than
+the baseline both arms started from*.
+
+Three things the audit found that a feature ledger alone would have missed:
+
+- **Two of the unguided model's three components are undeployable**, not just some of its
+  columns. The sequence member is a CNN whose ±6-link receptive field reads six links *ahead*;
+  the journey offset is built from the journey's own training labels. Decomposing the blend,
+  the offset alone supplies **−27.5% of the reported trip_rmse** — the single largest
+  contribution in the model, and the one with no inference-time form at all.
+- **The fair fight still goes to `domain-guided`.** Refitting the unguided arm's own recipe
+  inside the contract gives 0.007557 / 0.002362 — behind on both metrics (+10.8% / +5.6%). The
+  lead was not a better method applied to worse inputs.
+- **Inference cost is the larger effect, and it is the half nobody was measuring.** Even the
+  deployable unguided refit is **657× slower per link**: a million-traversal search goes from
+  1.4 s to 951 s. `domain.md` names inference cost as a competing objective, and the
+  domain-guided arm spent its last third of the session halving its own. The unguided arm was
+  never told there was a second objective, so it grew a 10,000-tree ensemble instead.
+
+One result goes the other way, and it is the useful one: allowing `prev2_speed` — causal, but
+one extra float per search label — gives 0.007087 / 0.002246, within 3.9% / 0.4% of the
+domain-guided model. That single scalar of memory buys more than a full causal sequence model
+does (0.007170 / 0.002279). If any of this is worth implementing, that is the cheap end.
 
 Trees execute **outside this repository**, each in its own directory containing nothing else, and
 are imported here with their history intact once a run completes. That is not bookkeeping
