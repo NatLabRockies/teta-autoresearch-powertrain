@@ -124,3 +124,4 @@ Updated after each experiment. Format:
 - [x] exp25: average the journey residual over distance instead of over links (total residual energy / total residual miles) -> rmse=0.004959, trip_rmse=0.001292 (keep) [rmse -0.16%, trip -5.14%]
 - [x] exp26: raise the journey-offset shrinkage from 20 to 40 links -> rmse=0.004947, trip_rmse=0.001294 (discard) [rmse -0.24%, trip +0.15%]
 - [x] exp27: lower the ensemble feature subsample from 0.7 to 0.5 -> rmse=0.004961, trip_rmse=0.001296 (discard) [rmse +0.04%, trip +0.31%]
+- [x] exp28: drop the journey_gge_per_mile feature now that the post-hoc offset is itself distance-weighted -> rmse=0.004974, trip_rmse=0.001289 (discard) [rmse +0.30%, trip -0.23%]
