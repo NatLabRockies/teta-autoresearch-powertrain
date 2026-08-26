@@ -93,3 +93,6 @@ Open hypotheses to test:
 
 Updated after each experiment. Format:
 `- [x] expN: description -> <metric>=<value>, <metric>=<value> (status)`
+
+- [x] exp0: baseline RandomForest(20, depth 10) -> rmse=0.013345, trip_rmse=0.003037 (keep) — 7.3s
+      of a 600s budget, so ~99% of the time budget is unused
