@@ -1,0 +1,1 @@
+{"tag": "bev-aug26", "scope": "session", "snapshot_at": "2026-08-26T17:25:43Z", "model": "claude-opus-5", "input_tokens": 226, "output_tokens": 123821, "cache_creation_input_tokens": 231335, "cache_read_input_tokens": 7537608, "assistant_messages": 113, "context_tokens_max": 109629, "context_tokens_last": 109629}

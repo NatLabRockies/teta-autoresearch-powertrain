@@ -96,3 +96,18 @@ Updated after each experiment. Format:
 
 - [x] exp0: baseline RandomForest(20, depth 10) -> rmse=0.013345, trip_rmse=0.003037 (keep) — 7.3s
       of a 600s budget, so ~99% of the time budget is unused
+- [x] exp1: max_depth 10 -> 20 -> rmse=0.013480, trip_rmse=0.003043 (discard) — both regressed
+- [x] exp2: n_estimators 20 -> 100 -> rmse=0.013341, trip_rmse=0.003036 (discard) — 0.03% gain for
+      5x inference cost, rejected on the cost criterion; calibration says the model is
+      feature-limited, not model-limited
+- [x] exp3: add prev_speed_mph lookback -> rmse=0.009164, trip_rmse=0.002990 (keep) — -31.3% link
+- [x] exp4: add explicit speed_delta -> rmse=0.008293, trip_rmse=0.002819 (keep) — -9.5% / -5.7%
+- [x] exp5: add ke_delta_per_mile -> rmse=0.008210, trip_rmse=0.002789 (keep) — -1.0% / -1.1%
+- [x] exp6: add sinuosity -> rmse=0.008093, trip_rmse=0.002757 (keep) — -1.4% / -1.1%
+- [x] exp7: add total_turn_degrees -> rmse=0.008088, trip_rmse=0.002756 (discard) — 0.05% for 25
+      lines, subsumed by sinuosity
+- [x] exp8: add prev_grade_percent -> rmse=0.008080, trip_rmse=0.002757 (keep) — -0.16% / flat
+- [x] exp9: RandomForest -> GPU MLP 256x256 -> rmse=0.007811, trip_rmse=0.002419 (keep) — -3.3%
+      link but -12.3% trip, the session's key structural finding
+- [x] exp10: MAX_EPOCHS 200 -> 600 -> rmse=0.007837, trip_rmse=0.002453 (discard) — overfits
+- checkpoint: learnings.md written at exp10. Best dd8f7e7, -41.5% link / -20.3% trip vs baseline
