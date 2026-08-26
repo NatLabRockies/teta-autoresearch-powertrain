@@ -4,3 +4,4 @@ f1675e3	RandomForest	0.013480	0.003043	discard	speed_mph,grade_percent,miles	max
 62ee281	RandomForest	0.013341	0.003036	discard	speed_mph,grade_percent,miles	n_estimators 20 -> 100 (Pareto-better but discarded on inference cost)
 f28267d	RandomForest	0.009164	0.002990	keep	speed_mph,grade_percent,miles,prev_speed_mph	add one-link lookback feature prev_speed_mph (first link of journey filled with 0)
 8e738d3	RandomForest	0.008293	0.002819	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta	add explicit speed_delta = speed_mph - prev_speed_mph
+d368d8f	RandomForest	0.008210	0.002789	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile	add ke_delta_per_mile = (v^2 - v_prev^2)/(2*miles), the physics form of the acceleration term
