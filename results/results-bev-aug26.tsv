@@ -18,3 +18,4 @@ b28a0ac	MLP	0.007736	0.002350	keep	speed_mph,grade_percent,miles,prev_speed_mph,
 8afaccc	MLP	0.007735	0.002358	discard	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,prev_grade_percent	HIDDEN 256 -> 512
 f9d1444	MLP	0.007741	0.002348	discard	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,prev_grade_percent	HIDDEN 256 -> 128, testing whether a cheaper network holds the metrics
 37e22d2	MLP	0.007399	0.002308	keep	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,junction_turn_degrees,prev_grade_percent	add junction_turn_degrees, the heading change from the previous links exit into this links entry
+8660022	MLP	0.006954	0.002266	keep	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,junction_turn_degrees,prev_grade_percent,prev_miles	add one-link lookback feature prev_miles
