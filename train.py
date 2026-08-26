@@ -49,7 +49,7 @@ MAX_EPOCHS = 200
 # budget and counts that as a crash, so the loop stops itself with room to
 # spare for data loading and scoring.
 TRAIN_SECONDS = 400
-WEIGHT_DECAY = 1e-3
+WEIGHT_DECAY = 1e-4
 SEED = 52
 
 
