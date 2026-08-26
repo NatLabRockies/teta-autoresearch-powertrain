@@ -23,6 +23,7 @@ LINK_FEATURES = [
     "miles",
     "prev_speed_mph",
     "speed_delta",
+    "ke_delta_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
@@ -43,6 +44,13 @@ def load_data() -> pd.DataFrame:
     # Explicit acceleration proxy. A tree splits on one axis at a time and so
     # cannot express speed_mph - prev_speed_mph from the two columns alone.
     df["speed_delta"] = df["speed_mph"] - df["prev_speed_mph"]
+    # Specific kinetic energy change per unit distance, (v^2 - v_prev^2)/(2d).
+    # This is the physics form of speed_delta: it carries the same units as the
+    # target (energy per mile), so it should map onto the target more directly
+    # than a raw speed difference does.
+    df["ke_delta_per_mile"] = (
+        df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2
+    ) / (2.0 * df["miles"])
     return df
 
 
