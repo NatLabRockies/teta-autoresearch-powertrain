@@ -16,3 +16,4 @@ b28a0ac	MLP	0.007736	0.002350	keep	speed_mph,grade_percent,miles,prev_speed_mph,
 0d09d7f	MLP	0.007739	0.002353	discard	speed_mph,grade_percent,miles,prev_speed_mph,sinuosity,prev_grade_percent	drop ke_delta_per_mile, testing whether the exp13 removal lesson extends to nonlinear features
 665761c	MLP	0.007729	0.002344	discard	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,hours_per_mile,prev_grade_percent	add hours_per_mile = 1/speed, the auxiliary-load physics term
 8afaccc	MLP	0.007735	0.002358	discard	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,prev_grade_percent	HIDDEN 256 -> 512
+f9d1444	MLP	0.007741	0.002348	discard	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,prev_grade_percent	HIDDEN 256 -> 128, testing whether a cheaper network holds the metrics
