@@ -29,6 +29,7 @@ LINK_FEATURES = [
     "junction_turn_degrees",
     "prev_grade_percent",
     "prev_miles",
+    "prev_sinuosity",
 ]
 
 TARGET = "energy_rate_gge"
@@ -115,6 +116,12 @@ def load_data() -> pd.DataFrame:
     # smallest link length in the data rather than an arbitrary epsilon.
     geom = geometry_features(df["geometry"])
     df["sinuosity"] = df["miles"] / np.maximum(geom["endpoint_miles"], 1e-4)
+    # Shape of the link the vehicle came off. A curvy preceding link means it
+    # was already cornering on entry, which bears on how much of prev_speed_mph
+    # actually carried through. A straight link, 1.0, is the fill for a start.
+    df["prev_sinuosity"] = (
+        df.groupby("journey_id")["sinuosity"].shift(1).fillna(1.0)
+    )
     # How far the vehicle turned at the junction it entered this link through.
     # exp7 showed the bending *inside* a link is subsumed by sinuosity, but an
     # intersection turn is a different event: it is where a driver actually
