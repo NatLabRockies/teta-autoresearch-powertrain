@@ -127,3 +127,31 @@ Updated after each experiment. Format:
       session's surprise; reads as a reliability weight on prev_speed_mph
 - [x] exp20: add prev_hours -> rmse=0.006952, trip_rmse=0.002266 (discard) — tie
 - checkpoint: learnings.md updated at exp20. Best 8660022, -47.9% link / -25.4% trip vs baseline
+- [x] exp21: signed junction turn -> rmse=0.006956, trip_rmse=0.002262 (discard) — split
+- [x] exp22: miles^2-weighted loss -> rmse=0.007064, trip_rmse=0.002276 (discard) — both worse,
+      including the metric it targeted; link errors cancel along a trip rather than adding
+- [x] exp23: add prev_sinuosity -> rmse=0.006859, trip_rmse=0.002252 (keep) — -1.4% / -0.6%
+- [x] exp24: ReLU -> SiLU -> rmse=0.006884, trip_rmse=0.002256 (discard)
+- [x] exp25: third hidden layer -> rmse=0.006951, trip_rmse=0.002270 (discard)
+- diagnostic: residuals binned by feature. Zero bias in feature space; 46% of squared error
+      below 23 mph, 43% in the two shortest mile deciles
+- [x] exp26: 3-model ensemble -> rmse=0.006822, trip_rmse=0.002235 (discard) — Pareto-better but
+      3x inference cost, and the small gain shows fitting variance is nearly exhausted
+- [x] exp27/28: batch 4096 / 16384 -> both split (discard) — 8192 is a true optimum
+- [x] exp29: lr 2e-3 -> rmse=0.006877, trip_rmse=0.002250 (discard) — split
+- [x] exp30: add vertices_per_mile -> rmse=0.006837, trip_rmse=0.002248 (keep) — -0.3% / -0.2%
+- [x] exp31: drop prev_grade_percent -> rmse=0.006857 (discard) — now worth 2x what it was
+      under the forest
+- [x] exp32: corner_energy_per_mile -> split (discard) — copying a good feature's form is not enough
+- [x] exp33: signed-log ke_delta -> rmse=0.006850 (discard) — the heavy tail is signal
+- [x] exp34: linear skip connection -> split (discard)
+- [x] exp35: link_bend_degrees -> exact tie (discard) — intra-link shape closed for good
+- checkpoint: learnings.md updated at exp35
+- [x] exp36: AdamW wd=1e-4 -> rmse=0.006837, trip_rmse=0.002242 (keep) — rmse tied, trip -0.27%
+- [x] exp37: wd 1e-3 -> split (discard)
+- [x] exp38: dropout 0.1 -> rmse -0.31% but trip_rmse +3.26% (discard) — train/predict mismatch
+      is systematic bias, the one thing trip_rmse cannot absorb
+- [x] exp39: drop sinuosity -> rmse=0.006999 (discard) — complements vertices_per_mile, not
+      redundant with it
+- [x] exp40: LayerNorm -> split (discard)
+- checkpoint: usage and transcripts captured through exp40. Best 653f2d8
