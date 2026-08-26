@@ -98,7 +98,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
 # Strength of the shrink toward the global mean, in links. A journey needs
 # roughly this many training links before its own mean is trusted over the
 # population mean.
-JOURNEY_PRIOR_LINKS = 40.0
+JOURNEY_PRIOR_LINKS = 20.0
 
 
 def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
