@@ -30,7 +30,6 @@ LINK_FEATURES = [
     "prev2_speed",
     "dv_out",
     "journey_rate",
-    "journey_gge_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
