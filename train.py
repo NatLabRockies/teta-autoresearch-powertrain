@@ -42,7 +42,7 @@ EARTH_RADIUS_MILES = 3958.7613
 # --- training config ---
 HIDDEN = 256
 BATCH_SIZE = 8192
-LEARNING_RATE = 1e-3
+LEARNING_RATE = 2e-3
 MAX_EPOCHS = 200
 # Wall clock the fitting loop may use. The harness kills the process at its own
 # budget and counts that as a crash, so the loop stops itself with room to
