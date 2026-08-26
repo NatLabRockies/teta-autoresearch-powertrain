@@ -47,7 +47,7 @@ TARGET = "energy_rate_gge"
 
 # --- sequence member ---
 CHANNELS = 64
-DILATIONS = (1, 2, 4)
+DILATIONS = (1, 2)
 KERNEL = 5
 SEQ_LR = 3e-3
 SEQ_SECONDS = 60.0
