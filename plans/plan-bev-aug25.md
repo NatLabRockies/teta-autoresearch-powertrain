@@ -139,3 +139,4 @@ Updated after each experiment. Format:
 - [x] exp40: raise the blend weight from 0.30 to 0.35 -> rmse=0.004800, trip_rmse=0.001274 (discard) [rmse -0.15%, trip +0.87%]
 - [x] exp41: halve the sequence batch size from 32768 to 16384 tokens -> rmse=0.004823, trip_rmse=0.001269 (discard) [rmse +0.33%, trip +0.48%]
 - [x] exp42: double the sequence batch size from 32768 to 65536 tokens -> rmse=0.004834, trip_rmse=0.001272 (discard) [rmse +0.56%, trip +0.71%]
+- [x] exp43: raise the tree learning rate from 0.10 to 0.12 at the same 2000 iterations -> rmse=0.004794, trip_rmse=0.001270 (discard) [rmse -0.27%, trip +0.55%]
