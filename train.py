@@ -92,14 +92,9 @@ def load_data() -> pd.DataFrame:
     df = df.sort_values(["journey_id", "link_start_time"])
     # One-link lookback: the speed on the preceding link of the same journey.
     # domain.md allows exactly one backward link and no knowledge of the next.
-    # The first link of a journey has no predecessor. Filling with the link's
-    # own speed makes the implied acceleration zero, which describes the
-    # *average* over the link better than a from-rest fill does: the vehicle
-    # starts at rest but is at its average speed for most of the link, and a 0
-    # fill tells the model the whole link was one long acceleration.
-    df["prev_speed_mph"] = (
-        df.groupby("journey_id")["speed_mph"].shift(1).fillna(df["speed_mph"])
-    )
+    # The first link of a journey has no predecessor and is filled with 0 --
+    # the vehicle starts from rest, so that is the physically true value.
+    df["prev_speed_mph"] = df.groupby("journey_id")["speed_mph"].shift(1).fillna(0.0)
     # The other half of the one-link lookback: the grade the vehicle was on as
     # it entered this link. A flat first link is the natural fill for a trip
     # start, matching the at-rest assumption used for prev_speed_mph.
