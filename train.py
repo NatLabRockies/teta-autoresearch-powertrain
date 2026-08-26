@@ -1,8 +1,11 @@
+import math
 import time
 
 import numpy as np
 import pandas as pd
+import torch
 from sklearn.ensemble import HistGradientBoostingRegressor
+from torch import nn
 
 from harness import (
     evaluate,
@@ -15,7 +18,7 @@ from harness import (
 # A coarse label for the kind of model below — "RandomForest", "MLP", "CNN",
 # "GRU", "Linear". Free text, recorded with every result so experiments can be
 # grouped by family afterwards. Keep it matched to what `build_model` returns.
-MODEL_FAMILY = "GBDT"
+MODEL_FAMILY = "GBDT+CNN"
 
 LINK_FEATURES = [
     "speed_mph",
@@ -33,7 +36,28 @@ LINK_FEATURES = [
     "journey_gge_per_mile",
 ]
 
+# The sequence model reads the raw link chain and works out trip context for
+# itself, so it is given the per-link features only. The journey columns are
+# deliberately withheld: their leave-one-out form is safe for a model that sees
+# one row at a time and a leak for one that sees a whole journey at once (see
+# `sequence_predictions`).
+SEQUENCE_FEATURES = [f for f in LINK_FEATURES if not f.startswith("journey_")]
+
 TARGET = "energy_rate_gge"
+
+# --- sequence member ---
+CHANNELS = 128
+DILATIONS = (1, 2, 4, 8)
+KERNEL = 5
+SEQ_LR = 3e-3
+SEQ_SECONDS = 60.0
+# Elapsed time by which sequence training must stop, whatever the trees took.
+SEQ_DEADLINE = 545.0
+MAX_TOKENS_PER_BATCH = 32768
+# Weight on the sequence member in the blend. Its errors correlate 0.72 with
+# the trees', so a minority weight removes variance neither model can remove
+# alone; past ~0.35 its own higher error starts to dominate.
+BLEND = 0.25
 
 # --- data config ---
 DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
@@ -222,6 +246,152 @@ def build_model(seed: int = 52) -> HistGradientBoostingRegressor:
     return HistGradientBoostingRegressor(**model_params)
 
 
+class Block(nn.Module):
+    """Residual dilated-convolution block over the link axis."""
+
+    def __init__(self, dilation: int) -> None:
+        super().__init__()
+        pad = dilation * (KERNEL - 1) // 2
+        self.conv1 = nn.Conv1d(
+            CHANNELS, CHANNELS, KERNEL, padding=pad, dilation=dilation
+        )
+        self.conv2 = nn.Conv1d(CHANNELS, CHANNELS, 1)
+        self.norm = nn.GroupNorm(1, CHANNELS)
+        self.act = nn.GELU()
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return x + self.conv2(self.act(self.conv1(self.norm(x))))
+
+
+class LinkSequenceNet(nn.Module):
+    """Reads a whole journey and predicts every link's rate at once.
+
+    Stacked dilated convolutions reach about thirty links each way, so this
+    member sees the trip context the trees only get through hand-cut +/-2
+    neighbour features. On its own it is ~8% worse than the trees; what makes
+    it worth carrying is that its errors correlate only 0.72 with theirs.
+    """
+
+    def __init__(self, n_features: int) -> None:
+        super().__init__()
+        self.inp = nn.Conv1d(n_features, CHANNELS, 1)
+        self.blocks = nn.ModuleList(Block(d) for d in DILATIONS)
+        self.out = nn.Conv1d(CHANNELS, 1, 1)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.inp(x)
+        for block in self.blocks:
+            h = block(h)
+        return self.out(h).squeeze(1)
+
+
+def journey_bounds(journey_id: np.ndarray) -> np.ndarray:
+    """Start/end row of every journey, which is contiguous after the sort."""
+    starts = np.flatnonzero(np.r_[True, journey_id[1:] != journey_id[:-1]])
+    return np.c_[starts, np.r_[starts[1:], len(journey_id)]]
+
+
+def pack_journeys(
+    df: pd.DataFrame, x: np.ndarray, y: np.ndarray, w: np.ndarray, device: torch.device
+) -> list[tuple[torch.Tensor, torch.Tensor, torch.Tensor, np.ndarray]]:
+    """Batch journeys of similar length into [batch, features, links] tensors."""
+    bounds = journey_bounds(df["journey_id"].to_numpy())
+    lengths = bounds[:, 1] - bounds[:, 0]
+    groups: list[list[int]] = []
+    current: list[int] = []
+    longest = 0
+    for j in np.argsort(lengths, kind="stable"):
+        longest = max(longest, int(lengths[j]))
+        if current and longest * (len(current) + 1) > MAX_TOKENS_PER_BATCH:
+            groups.append(current)
+            current, longest = [], int(lengths[j])
+        current.append(int(j))
+    groups.append(current)
+
+    packed = []
+    for group in groups:
+        spans = [(int(bounds[j, 0]), int(bounds[j, 1])) for j in group]
+        width = max(b - a for a, b in spans)
+        xb = np.zeros((len(spans), width, x.shape[1]), dtype=np.float32)
+        yb = np.zeros((len(spans), width), dtype=np.float32)
+        wb = np.zeros((len(spans), width), dtype=np.float32)
+        rows = np.full((len(spans), width), -1, dtype=np.int64)
+        for i, (a, b) in enumerate(spans):
+            xb[i, : b - a] = x[a:b]
+            yb[i, : b - a] = y[a:b]
+            wb[i, : b - a] = w[a:b]
+            rows[i, : b - a] = np.arange(a, b)
+        packed.append(
+            (
+                torch.from_numpy(xb).to(device).transpose(1, 2),
+                torch.from_numpy(yb).to(device),
+                torch.from_numpy(wb).to(device),
+                rows,
+            )
+        )
+    return packed
+
+
+def sequence_predictions(
+    df: pd.DataFrame, train_rows: np.ndarray, run_started: float
+) -> np.ndarray:
+    """Fit the sequence member and predict every link of every journey.
+
+    Test links are fed in as context but never scored -- the loss is masked to
+    training links, exactly as the neighbour features already read a test link's
+    speed without reading its target.
+
+    The journey columns are withheld here on purpose. Their leave-one-out form
+    differs between two links of the same journey by a term in those links' own
+    targets, so a model that sees a whole journey at once can difference two of
+    them and read a target straight out. A row-at-a-time tree cannot; this net
+    can, and does -- it cut its training loss by a third and made its test error
+    75% worse. Given the raw chain instead it matches what it scored with the
+    journey columns present, because it works the trip context out itself.
+    """
+    y = df[TARGET].to_numpy(dtype=np.float32)
+    w = np.zeros(len(df), dtype=np.float32)
+    w[train_rows] = 1.0
+    is_train = w > 0
+
+    x = df[SEQUENCE_FEATURES].to_numpy(dtype=np.float32)
+    x = (x - np.nanmean(x[is_train], axis=0)) / (np.nanstd(x[is_train], axis=0) + 1e-6)
+    np.nan_to_num(x, copy=False)  # a missing neighbour becomes the mean link
+    y_scale = float(y[is_train].std())
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.manual_seed(52)
+    packed = pack_journeys(df, x, y, w, device)
+    net = LinkSequenceNet(x.shape[1]).to(device)
+    opt = torch.optim.AdamW(net.parameters(), lr=SEQ_LR, weight_decay=1e-4)
+
+    # Whatever the trees left of the budget, capped at what this net can use
+    # before it starts overfitting 15,247 journeys.
+    budget = max(15.0, min(SEQ_SECONDS, run_started + SEQ_DEADLINE - time.time()))
+    rng = np.random.default_rng(52)
+    start = time.time()
+    while time.time() - start < budget:
+        for group in opt.param_groups:
+            group["lr"] = (
+                SEQ_LR * 0.5 * (1 + math.cos(math.pi * (time.time() - start) / budget))
+            )
+        for i in rng.permutation(len(packed)):
+            xb, yb, wb, _ = packed[i]
+            loss = ((net(xb) * y_scale - yb) ** 2 * wb).sum() / wb.sum().clamp(min=1.0)
+            opt.zero_grad(set_to_none=True)
+            loss.backward()
+            opt.step()
+
+    out = np.zeros(len(df), dtype=np.float32)
+    net.eval()
+    with torch.no_grad():
+        for xb, _, _, rows in packed:
+            block = (net(xb) * y_scale).cpu().numpy()
+            keep = rows >= 0
+            out[rows[keep]] = block[keep]
+    return out
+
+
 class Ensemble:
     """Average several boosted models that each see part of the feature set.
 
@@ -248,7 +418,10 @@ def train_model() -> dict[str, float]:
     """Train and evaluate. Returns results dict."""
     t0 = time.time()
 
-    df = load_data()
+    df = load_data().reset_index(drop=True)
+    # `_row` survives the split, so the sequence model can be handed the same
+    # train/test mask in the journey-ordered frame it needs.
+    df["_row"] = np.arange(len(df), dtype=np.int64)
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
     add_journey_effect(train_df, test_df)
 
@@ -260,8 +433,11 @@ def train_model() -> dict[str, float]:
     model = Ensemble()
     residual = out_of_fold_residual(train_df, y_train)
     model.fit(train_df[LINK_FEATURES], y_train)
-    predicted = model.predict(test_df[LINK_FEATURES]) + journey_offset(
-        train_df, test_df, residual
+    sequence = sequence_predictions(df, train_df["_row"].to_numpy(), t0)
+    predicted = (
+        (1 - BLEND) * model.predict(test_df[LINK_FEATURES])
+        + BLEND * sequence[test_df["_row"].to_numpy()]
+        + journey_offset(train_df, test_df, residual)
     )
 
     results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
