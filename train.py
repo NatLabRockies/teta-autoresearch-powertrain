@@ -142,8 +142,6 @@ def build_model(n_features: int) -> nn.Module:
         nn.ReLU(),
         nn.Linear(HIDDEN, HIDDEN),
         nn.ReLU(),
-        nn.Linear(HIDDEN, HIDDEN),
-        nn.ReLU(),
         nn.Linear(HIDDEN, 1),
     )
 
