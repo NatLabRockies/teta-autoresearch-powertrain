@@ -1,2 +1,3 @@
 commit	model_family	rmse	trip_rmse	status	features	description
 cc06c6e	RandomForest	0.013345	0.003037	keep	speed_mph,grade_percent,miles	baseline
+f1675e3	RandomForest	0.013480	0.003043	discard	speed_mph,grade_percent,miles	max_depth 10 -> 20

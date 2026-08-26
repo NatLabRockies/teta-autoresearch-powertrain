@@ -38,7 +38,7 @@ def load_data() -> pd.DataFrame:
 def build_model() -> RandomForestRegressor:
     model_params = {
         "n_estimators": 20,
-        "max_depth": 20,
+        "max_depth": 10,
         "min_samples_split": 10,
         "random_state": 52,
         "n_jobs": -1,  # use all cores
