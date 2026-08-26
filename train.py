@@ -57,7 +57,7 @@ MAX_TOKENS_PER_BATCH = 32768
 # Weight on the sequence member in the blend. Its errors correlate 0.72 with
 # the trees', so a minority weight removes variance neither model can remove
 # alone; past ~0.35 its own higher error starts to dominate.
-BLEND = 0.25
+BLEND = 0.30
 
 # --- data config ---
 DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
