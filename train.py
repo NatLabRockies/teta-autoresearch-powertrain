@@ -3,7 +3,8 @@ import time
 import numpy as np
 import pandas as pd
 import shapely
-from sklearn.ensemble import RandomForestRegressor
+import torch
+from torch import nn
 
 from harness import (
     evaluate,
@@ -16,7 +17,7 @@ from harness import (
 # A coarse label for the kind of model below — "RandomForest", "MLP", "CNN",
 # "GRU", "Linear". Free text, recorded with every result so experiments can be
 # grouped by family afterwards. Keep it matched to what `build_model` returns.
-MODEL_FAMILY = "RandomForest"
+MODEL_FAMILY = "MLP"
 
 LINK_FEATURES = [
     "speed_mph",
@@ -34,8 +35,18 @@ TARGET = "energy_rate_gge"
 # --- data config ---
 DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 
-
 EARTH_RADIUS_MILES = 3958.7613
+
+# --- training config ---
+HIDDEN = 256
+BATCH_SIZE = 8192
+LEARNING_RATE = 1e-3
+MAX_EPOCHS = 200
+# Wall clock the fitting loop may use. The harness kills the process at its own
+# budget and counts that as a crash, so the loop stops itself with room to
+# spare for data loading and scoring.
+TRAIN_SECONDS = 400
+SEED = 52
 
 
 def straight_line_miles(geometry: pd.Series) -> np.ndarray:
@@ -91,20 +102,20 @@ def load_data() -> pd.DataFrame:
     return df
 
 
-def build_model() -> RandomForestRegressor:
-    model_params = {
-        "n_estimators": 20,
-        "max_depth": 10,
-        "min_samples_split": 10,
-        "random_state": 52,
-        "n_jobs": -1,  # use all cores
-    }
-    return RandomForestRegressor(**model_params)
+def build_model(n_features: int) -> nn.Module:
+    return nn.Sequential(
+        nn.Linear(n_features, HIDDEN),
+        nn.ReLU(),
+        nn.Linear(HIDDEN, HIDDEN),
+        nn.ReLU(),
+        nn.Linear(HIDDEN, 1),
+    )
 
 
 def train_model() -> dict[str, float]:
     """Train and evaluate. Returns results dict."""
     t0 = time.time()
+    torch.manual_seed(SEED)
 
     df = load_data()
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
@@ -114,9 +125,42 @@ def train_model() -> dict[str, float]:
     journey_id_te = test_df["journey_id"].to_numpy()
     miles_te = test_df["miles"].to_numpy(dtype=np.float32)
 
-    model = build_model()
-    model.fit(train_df[LINK_FEATURES], y_train)
-    predicted = model.predict(test_df[LINK_FEATURES])
+    x_train = train_df[LINK_FEATURES].to_numpy(dtype=np.float32)
+    x_test = test_df[LINK_FEATURES].to_numpy(dtype=np.float32)
+
+    # Standardize from training statistics only. Gradient descent needs inputs
+    # on a common scale, and the target is ~1e-2 so it is scaled up too --
+    # squared error on the standardized target is proportional to squared error
+    # on the raw one, so this does not change what is being optimized.
+    x_mean, x_std = x_train.mean(axis=0), x_train.std(axis=0)
+    x_std[x_std == 0] = 1.0
+    y_mean, y_std = float(y_train.mean()), float(y_train.std())
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    xt = torch.from_numpy((x_train - x_mean) / x_std).to(device)
+    yt = torch.from_numpy((y_train - y_mean) / y_std).to(device).unsqueeze(1)
+    xe = torch.from_numpy((x_test - x_mean) / x_std).to(device)
+
+    model = build_model(len(LINK_FEATURES)).to(device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    loss_fn = nn.MSELoss()
+
+    n = xt.shape[0]
+    t_train = time.time()
+    for _ in range(MAX_EPOCHS):
+        order = torch.randperm(n, device=device)
+        for start in range(0, n, BATCH_SIZE):
+            idx = order[start : start + BATCH_SIZE]
+            optimizer.zero_grad()
+            loss = loss_fn(model(xt[idx]), yt[idx])
+            loss.backward()
+            optimizer.step()
+        if time.time() - t_train > TRAIN_SECONDS:
+            break
+
+    model.eval()
+    with torch.no_grad():
+        predicted = model(xe).squeeze(1).cpu().numpy() * y_std + y_mean
 
     results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
 
