@@ -26,6 +26,7 @@ LINK_FEATURES = [
     "speed_delta",
     "ke_delta_per_mile",
     "sinuosity",
+    "total_turn_degrees",
 ]
 
 TARGET = "energy_rate_gge"
@@ -37,21 +38,47 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 EARTH_RADIUS_MILES = 3958.7613
 
 
-def straight_line_miles(geometry: pd.Series) -> np.ndarray:
-    """Great-circle distance between each linestring's two endpoints."""
+def geometry_features(geometry: pd.Series) -> dict[str, np.ndarray]:
+    """Shape features per link. Decodes the WKB once and derives everything.
+
+    Both values are static road attributes, so they cost nothing at inference
+    time in the shortest-path search -- they can be precomputed per link.
+    """
     geoms = shapely.from_wkb(geometry.to_numpy())
     coords = shapely.get_coordinates(geoms)
     n_points = shapely.get_num_coordinates(geoms)
     end = np.cumsum(n_points) - 1
     start = end - n_points + 1
 
+    # Great-circle distance between each linestring's two endpoints.
     lon1, lat1 = np.radians(coords[start, 0]), np.radians(coords[start, 1])
     lon2, lat2 = np.radians(coords[end, 0]), np.radians(coords[end, 1])
     a = (
         np.sin((lat2 - lat1) / 2) ** 2
         + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
     )
-    return 2.0 * EARTH_RADIUS_MILES * np.arcsin(np.sqrt(a))
+    endpoint_miles = 2.0 * EARTH_RADIUS_MILES * np.arcsin(np.sqrt(a))
+
+    # Total absolute heading change across the link's interior vertices. A
+    # segment belongs to a link only when both of its coordinates do, and a
+    # turn exists only where two such segments meet inside the same link.
+    link_of_point = np.repeat(np.arange(len(geoms)), n_points)
+    lat = np.radians(coords[:, 1])
+    seg_east = np.diff(coords[:, 0]) * np.cos((lat[1:] + lat[:-1]) / 2)
+    seg_north = np.diff(coords[:, 1])
+    in_link = link_of_point[1:] == link_of_point[:-1]
+    heading = np.arctan2(seg_north[in_link], seg_east[in_link])
+    link_of_seg = link_of_point[1:][in_link]
+
+    turns = link_of_seg[1:] == link_of_seg[:-1]
+    delta = heading[1:][turns] - heading[:-1][turns]
+    # Wrap to (-pi, pi] so a heading crossing due east is not read as a u-turn.
+    turn_degrees = np.abs(np.degrees(np.arctan2(np.sin(delta), np.cos(delta))))
+    total_turn = np.bincount(
+        link_of_seg[1:][turns], weights=turn_degrees, minlength=len(geoms)
+    )
+
+    return {"endpoint_miles": endpoint_miles, "total_turn_degrees": total_turn}
 
 
 def load_data() -> pd.DataFrame:
@@ -78,9 +105,12 @@ def load_data() -> pd.DataFrame:
     # the value is a static road attribute so it is free at inference time.
     # Loop links (start == end) would divide by zero, so the floor is the
     # smallest link length in the data rather than an arbitrary epsilon.
-    df["sinuosity"] = df["miles"] / np.maximum(
-        straight_line_miles(df["geometry"]), 1e-4
-    )
+    geom = geometry_features(df["geometry"])
+    df["sinuosity"] = df["miles"] / np.maximum(geom["endpoint_miles"], 1e-4)
+    # Cornering demand: how many degrees the vehicle turns through on the link.
+    # Sinuosity says the path is longer than the straight line; this says how
+    # sharply, which is what forces braking and reacceleration.
+    df["total_turn_degrees"] = geom["total_turn_degrees"]
     return df
 
 
