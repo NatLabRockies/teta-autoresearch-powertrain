@@ -137,16 +137,11 @@ def load_data() -> pd.DataFrame:
 
 
 def build_model(n_features: int) -> nn.Module:
-    # SiLU rather than ReLU. A ReLU network is piecewise linear, so its fit has
-    # kinks; the session's structural finding is that local bumpiness is what
-    # trip_rmse punishes, because bias that is systematic over a region adds up
-    # when a journey's links are summed. A smooth activation should therefore
-    # buy trip_rmse more than it buys link rmse.
     return nn.Sequential(
         nn.Linear(n_features, HIDDEN),
-        nn.SiLU(),
+        nn.ReLU(),
         nn.Linear(HIDDEN, HIDDEN),
-        nn.SiLU(),
+        nn.ReLU(),
         nn.Linear(HIDDEN, 1),
     )
 
