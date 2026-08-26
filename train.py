@@ -31,7 +31,6 @@ LINK_FEATURES = [
     "prev_miles",
     "prev_sinuosity",
     "vertices_per_mile",
-    "is_decelerating",
 ]
 
 TARGET = "energy_rate_gge"
@@ -113,14 +112,6 @@ def load_data() -> pd.DataFrame:
     df["ke_delta_per_mile"] = (
         df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2
     ) / (2.0 * df["miles"])
-    # Whether the vehicle is slowing. A BEV recovers energy through regen at a
-    # different efficiency from the one it spends it at under power, so the
-    # target has a genuine kink at zero acceleration. A step is the one shape a
-    # ReLU stack approximates badly, and unlike speed_delta in exp13 this is not
-    # a linear combination the first layer can form for itself.
-    df["is_decelerating"] = (
-        df["speed_mph"] < df["prev_speed_mph"]
-    ).astype(np.float64)
     # Geometry: how much longer the link is than the straight line between its
     # endpoints. A curvier link forces cornering at a given average speed, and
     # the value is a static road attribute so it is free at inference time.
