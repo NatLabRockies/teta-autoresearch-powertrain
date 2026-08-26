@@ -49,7 +49,7 @@ TARGET = "energy_rate_gge"
 CHANNELS = 64
 DILATIONS = (1, 2)
 KERNEL = 5
-SEQ_LR = 4.5e-3
+SEQ_LR = 7e-3
 SEQ_SECONDS = 60.0
 # Elapsed time by which sequence training must stop, whatever the trees took.
 SEQ_DEADLINE = 545.0
