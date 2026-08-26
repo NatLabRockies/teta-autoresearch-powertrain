@@ -10,3 +10,4 @@ be6ccd2	RandomForest	0.008093	0.002757	keep	speed_mph,grade_percent,miles,prev_s
 55b4a0e	RandomForest	0.008080	0.002757	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,prev_grade_percent	add one-link lookback feature prev_grade_percent
 dd8f7e7	MLP	0.007811	0.002419	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,prev_grade_percent	swap RandomForest for a GPU MLP (8 -> 256 -> 256 -> 1, Adam 1e-3, batch 8192, 200 epochs)
 ea00a2e	MLP	0.007837	0.002453	discard	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,prev_grade_percent	MAX_EPOCHS 200 -> 600
+b28a0ac	MLP	0.007736	0.002350	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,prev_grade_percent	cosine-anneal the learning rate to zero over the 200 epochs
