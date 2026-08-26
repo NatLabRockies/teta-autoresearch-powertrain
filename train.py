@@ -207,7 +207,7 @@ def load_data() -> pd.DataFrame:
 # How many boosted models to average, and how much of the feature set each
 # split of each of them may look at.
 N_ENSEMBLE = 5
-FEATURE_SUBSAMPLE = 0.5
+FEATURE_SUBSAMPLE = 0.7
 
 
 def build_model(seed: int = 52) -> HistGradientBoostingRegressor:

@@ -123,3 +123,4 @@ Updated after each experiment. Format:
 - [x] exp24: score the out-of-fold residual with a single model instead of the whole ensemble, to buy back runtime -> rmse=0.004968, trip_rmse=0.001371 (discard) [rmse +0.02%, trip +0.66%]
 - [x] exp25: average the journey residual over distance instead of over links (total residual energy / total residual miles) -> rmse=0.004959, trip_rmse=0.001292 (keep) [rmse -0.16%, trip -5.14%]
 - [x] exp26: raise the journey-offset shrinkage from 20 to 40 links -> rmse=0.004947, trip_rmse=0.001294 (discard) [rmse -0.24%, trip +0.15%]
+- [x] exp27: lower the ensemble feature subsample from 0.7 to 0.5 -> rmse=0.004961, trip_rmse=0.001296 (discard) [rmse +0.04%, trip +0.31%]
