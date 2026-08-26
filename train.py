@@ -21,6 +21,7 @@ LINK_FEATURES = [
     "speed_mph",
     "grade_percent",
     "miles",
+    "prev_speed_mph",
 ]
 
 TARGET = "energy_rate_gge"
@@ -32,7 +33,13 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
     # sort by journey and time
-    return df.sort_values(["journey_id", "link_start_time"])
+    df = df.sort_values(["journey_id", "link_start_time"])
+    # One-link lookback: the speed on the preceding link of the same journey.
+    # domain.md allows exactly one backward link and no knowledge of the next.
+    # The first link of a journey has no predecessor and is filled with 0 --
+    # the vehicle starts from rest, so that is the physically true value.
+    df["prev_speed_mph"] = df.groupby("journey_id")["speed_mph"].shift(1).fillna(0.0)
+    return df
 
 
 def build_model() -> RandomForestRegressor:
