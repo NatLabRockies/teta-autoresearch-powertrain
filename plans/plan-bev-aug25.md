@@ -144,3 +144,4 @@ Updated after each experiment. Format:
 - [x] exp45: measure the journey offset against the blend's training residual instead of the trees' alone -> rmse=0.004797, trip_rmse=0.001240 (keep) [rmse -0.21%, trip -1.82%]
 - [x] exp46: re-test the blend weight at 0.35 now that the journey offset is measured against the blend -> rmse=0.004816, trip_rmse=0.001245 (discard) [rmse +0.40%, trip +0.40%]
 - [x] exp47: lower the offset shrinkage from 20 to 15 now that the residual it is built from is part in-sample -> rmse=0.004798, trip_rmse=0.001250 (discard) [rmse +0.02%, trip +0.81%]
+- [x] exp48: raise the sequence learning rate from 3e-3 to 4.5e-3 -> rmse=0.004785, trip_rmse=0.001231 (keep) [rmse -0.25%, trip -0.73%]
