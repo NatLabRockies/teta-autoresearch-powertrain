@@ -179,11 +179,21 @@ def journey_offset(
     leftover shift, measured after the model has done its best. Shrinking toward
     zero keeps a journey with two training links from moving on noise, and
     leaves a journey with none alone.
+
+    The mean is taken over distance rather than over links: total residual
+    energy divided by total residual miles. A trip's leftover is a quantity of
+    energy, and a hundred-foot link's rate is a ratio with a hundred-foot
+    denominator -- averaging links equally lets the noisiest of them set the
+    correction for the whole trip.
     """
-    by_journey = pd.Series(residual).groupby(train_df["journey_id"].to_numpy())
+    keys = train_df["journey_id"].to_numpy()
+    miles = train_df["miles"].to_numpy()
+    energy = pd.Series(residual * miles).groupby(keys).sum()
+    distance = pd.Series(miles).groupby(keys).sum()
+    floor = JOURNEY_PRIOR_LINKS * float(miles.mean())
     j = test_df["journey_id"]
-    return j.map(by_journey.sum()).fillna(0.0).to_numpy() / (
-        j.map(by_journey.count()).fillna(0.0).to_numpy() + JOURNEY_PRIOR_LINKS
+    return j.map(energy).fillna(0.0).to_numpy() / (
+        j.map(distance).fillna(0.0).to_numpy() + floor
     )
 
 
