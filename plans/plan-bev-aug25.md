@@ -143,3 +143,4 @@ Updated after each experiment. Format:
 - [x] exp44: lower the journey-offset shrinkage from 20 to 12 links -> rmse=0.004806, trip_rmse=0.001281 (discard) [rmse -0.02%, trip +1.43%]
 - [x] exp45: measure the journey offset against the blend's training residual instead of the trees' alone -> rmse=0.004797, trip_rmse=0.001240 (keep) [rmse -0.21%, trip -1.82%]
 - [x] exp46: re-test the blend weight at 0.35 now that the journey offset is measured against the blend -> rmse=0.004816, trip_rmse=0.001245 (discard) [rmse +0.40%, trip +0.40%]
+- [x] exp47: lower the offset shrinkage from 20 to 15 now that the residual it is built from is part in-sample -> rmse=0.004798, trip_rmse=0.001250 (discard) [rmse +0.02%, trip +0.81%]
