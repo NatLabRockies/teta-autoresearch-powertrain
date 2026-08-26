@@ -51,7 +51,7 @@ HIDDEN = 128
 N_MODELS = 2
 BATCH_SIZE = 8192
 LEARNING_RATE = 1e-3
-MAX_EPOCHS = 280
+MAX_EPOCHS = 320
 # Wall clock the fitting loop may use. The harness kills the process at its own
 # budget and counts that as a crash, so the loop stops itself with room to
 # spare for data loading and scoring.
