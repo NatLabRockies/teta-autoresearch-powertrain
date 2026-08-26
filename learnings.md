@@ -4,17 +4,31 @@ Accumulated across sessions. Sessions so far: `bev-aug26`.
 
 ## Best known configuration
 
-As of exp35 of `bev-aug26`, commit `9ff5e20`:
+As of exp50 (end of `bev-aug26`), commit `e315384`:
 
-- **Model**: MLP, 11 → 256 → 256 → 1, ReLU, Adam lr 1e-3 cosine-annealed to zero, batch 8192,
-  200 epochs, MSE on a standardized target, on GPU.
-- **Features**: `speed_mph`, `grade_percent`, `miles`, `prev_speed_mph`, `ke_delta_per_mile`,
-  `sinuosity`, `junction_turn_degrees`, `prev_grade_percent`, `prev_miles`, `prev_sinuosity`,
-  `vertices_per_mile`
-- **Metrics**: `rmse` 0.006837, `trip_rmse` 0.002248
+- **Model**: an average of **2 MLPs**, each 11 → 128 → 128 → 1, ReLU, AdamW lr 1e-3 with weight
+  decay 1e-4, cosine-annealed to zero, batch 8192, 320 epochs, MSE on a standardized target,
+  on GPU. Members differ only by seed (init + shuffle).
+- **Features** (11): `speed_mph`, `grade_percent`, `miles`, `prev_speed_mph`,
+  `ke_delta_per_mile`, `sinuosity`, `junction_turn_degrees`, `prev_grade_percent`, `prev_miles`,
+  `prev_sinuosity`, `vertices_per_mile`
+- **Metrics**: `rmse` 0.006823, `trip_rmse` 0.002239
 - Against the original scaffold baseline (`rmse` 0.013345, `trip_rmse` 0.003037) that is
-  **−48.8% link RMSE and −26.0% trip RMSE**.
-- Runtime 132s of the 600s budget.
+  **−48.9% link RMSE and −26.3% trip RMSE**.
+- **Inference cost: 35,840 multiply-accumulates per link**, roughly half the 68,608 of the
+  single 256-wide net it replaced — so the final model is both more accurate *and* cheaper to
+  apply than the mid-session best. This matters because RouteE Compass evaluates energy at
+  every link traversal in a shortest-path search.
+- Runtime 327s of the 600s budget.
+
+### Session summary: 50 experiments, 13 keeps
+
+Almost all the accuracy came from **features** (exp3–exp8, exp18, exp19, exp23, exp30 —
+together the whole −49%/−26%) plus **one architecture change** (exp9, forest → MLP). Every
+other family — width, depth, activation, normalization, batch size, learning rate, loss shaping
+— was probed and closed. The last third of the session bought almost no accuracy but halved
+inference cost, which under `domain.md`'s competing-objectives clause is the more deployable
+result.
 
 ## What works
 
@@ -169,6 +183,44 @@ could not use more capacity immediately used more information when `junction_tur
 `prev_miles` arrived (exp18, exp19, −10% link RMSE between them). Architecture tuning is a
 closed direction for now; features are the frontier.
 
+## The cost/accuracy frontier (exp45–exp49) — read this before tuning size again
+
+The single most deployable result of the session came from **composing two rejected
+experiments**. Narrowing to 128 (exp17) was rejected for losing 0.15% accuracy. Ensembling
+(exp26) was rejected for costing 3× inference. A **2×128 ensemble** (exp45) cancels each
+objection against the other: it holds accuracy exactly while halving inference cost.
+
+**A discarded result is a measured tradeoff, not a dead end.** Two of them can compose into a
+win neither could reach alone. This is the most reusable lesson here.
+
+The frontier is now fully mapped, so do not re-explore it blind:
+
+| config | per-link MACs | vs 2×128 | verdict |
+|---|---|---|---|
+| 1×256 | 68,608 | 1.91× | the old best; no better |
+| 2×160 | 55,040 | 1.54× | −0.18% accuracy, rejected on cost (exp47) |
+| **2×128** | **35,840** | **1.00×** | **the knee — current best** |
+| 3×96 | 31,104 | 0.87× | below the width floor (exp46) |
+| 2×112 | 27,776 | 0.78× | below the width floor (exp48) |
+
+There is a **per-member width floor at 128**: more members cannot buy capacity that no member
+has. If accuracy ever matters more than cost, 2×160 is the next stop up and is *still* cheaper
+than the original 1×256.
+
+## Re-test settled things after the model changes
+
+Two experiments make this a rule rather than an anecdote:
+
+- `prev_grade_percent` was worth 0.16% to the forest and is worth roughly twice that to the
+  network (exp31) — while `speed_delta` went the other way and became removable (exp13).
+- The epoch count was established as 200 twice, in exp12 and again in exp42 under weight decay.
+  When exp45 halved the model, 320 became correct (exp49, exp50) and reopened a twice-closed
+  direction.
+
+**A hyperparameter or a marginal feature is tuned against a particular architecture, not against
+the problem.** When the architecture changes, the setting is stale — and value moves in both
+directions, so this is not just an argument for pruning.
+
 ## Open hypotheses
 
 - **The lookback family is complete and was the richest seam in the session.** `speed`, `grade`,
@@ -179,9 +231,20 @@ closed direction for now; features are the frontier.
   was worth 9.5% to the forest and became removable (exp13); `prev_grade_percent` was worth
   0.16% to the forest and is now worth roughly twice that (exp31). Do not assume a
   family change only prunes.
-- Regularization proper (dropout, weight decay) is still untested.
-- The 46% of error below 23 mph is the standing target. Nothing tried so far distinguishes rows
-  *within* that regime; a feature that does is where a real gain would come from.
+- **The 46% of error below 23 mph is the standing target**, and it is the one place a real gain
+  is still plausible. Nothing tried distinguishes rows *within* that regime. Note that exp44
+  ruled out the easy explanation: link centroid lat/lon made both metrics *worse*, so this is
+  not local traffic character the model could look up — it appears genuinely unobservable at
+  link-average resolution given one-link lookback.
+- Regularization is now partly explored: weight decay 1e-4 helps (exp36), 1e-3 does not
+  (exp37), dropout is actively harmful to `trip_rmse` (exp38). Untested: label smoothing,
+  input noise, stochastic weight averaging.
+- Untested model families: gradient-boosted trees were explicitly out of scope for this
+  session's brief, and no sequence model was tried (a GRU over the one-link lookback is
+  degenerate at length 2, so this is likely a non-direction).
+- If a future session is allowed to relax the one-link lookback, exp3 and exp19 together
+  suggest that is where the largest remaining gain lives — the lookback family produced the
+  three biggest wins of this session and was exhausted only because the limit is one link.
 - Every result so far is deterministic (fixed `random_state`, fixed split), so sub-1% deltas are
   real and reproducible rather than noise. Do not dismiss small movements as run-to-run variance.
 

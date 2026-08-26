@@ -155,3 +155,22 @@ Updated after each experiment. Format:
       redundant with it
 - [x] exp40: LayerNorm -> split (discard)
 - checkpoint: usage and transcripts captured through exp40. Best 653f2d8
+- [x] exp41: own-speed fill for first link -> rmse=0.006838 (discard) — from-rest is right
+- [x] exp42: MAX_EPOCHS 300 under weight decay -> rmse=0.006856 (discard)
+- [x] exp43: is_decelerating flag -> rmse=0.006850 (discard) — the regen kink already sits at
+      zero of ke_delta_per_mile, and a kink at zero is what a ReLU *is*
+- [x] exp44: centroid lat/lon diagnostic -> both worse (discard) — no exploitable
+      region-specific signal remains; the model is genuinely physics-driven
+- [x] exp45: 2x128 ensemble replacing 1x256 -> rmse=0.006836, trip_rmse=0.002242 (keep) —
+      accuracy held at HALF the inference cost, by composing two previously rejected results
+- [x] exp46: 3x96 -> (discard); exp47: 2x160 -> Pareto-better but +54% cost (discard);
+      exp48: 2x112 -> (discard). Per-member width floor is 128; 2x128 is the knee
+- [x] exp49: MAX_EPOCHS 280 for narrow members -> rmse=0.006828, trip_rmse=0.002239 (keep)
+- [x] exp50: MAX_EPOCHS 320 -> rmse=0.006823, trip_rmse=0.002239 (keep)
+
+## Outcome
+
+Session limit reached at 50 experiments (~2h45m wall clock, well inside the 8h limit).
+**13 keeps.** Final: `e315384`, rmse 0.006823, trip_rmse 0.002239 — **-48.9% link RMSE and
+-26.3% trip RMSE** against the scaffold baseline, at roughly half the inference cost of the
+mid-session best. Full findings in `learnings.md`.

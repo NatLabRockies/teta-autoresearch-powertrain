@@ -2,18 +2,18 @@
 
 - tree: `/home/nreinick/routee-autoresearch-runs/domain-guided`
 - transcripts: `/home/nreinick/.claude/projects/-home-nreinick-routee-autoresearch-runs-domain-guided`
-- captured: 2026-08-26T13:02:59-0600
-- session span: 2026-08-26T17:01:57.903Z → 2026-08-26T19:02:56.842Z
-- assistant messages: 267
+- captured: 2026-08-26T13:46:40-0600
+- session span: 2026-08-26T17:01:57.903Z → 2026-08-26T19:46:35.036Z
+- assistant messages: 301
 - transcript files: 1
 - window: records at or after `2026-08-25T16:57:58-06:00`
-- excluded: 1121 record(s) predating the window (earlier sessions in this same tree path)
+- excluded: 1141 record(s) predating the window (earlier sessions in this same tree path)
 
 ## Tool calls
 
 | tool | calls |
 | --- | --- |
-| `Bash` | 87 |
+| `Bash` | 99 |
 | `Read` | 9 |
 | `Edit` | 9 |
 | `Write` | 5 |
@@ -28,7 +28,7 @@ Everything the human typed. In a two-arm study this is the variable to hold cons
 
 ## Paths touched outside the tree
 
-**12 distinct out-of-tree reference(s).** Each needs a look: a path outside the tree is how prior findings would enter an otherwise-isolated run. Extraction is best-effort and over-reports (a `/usr/bin` tool path counts), so read before concluding.
+**13 distinct out-of-tree reference(s).** Each needs a look: a path outside the tree is how prior findings would enter an otherwise-isolated run. Extraction is best-effort and over-reports (a `/usr/bin` tool path counts), so read before concluding.
 
 | tool | path |
 | --- | --- |
@@ -44,4 +44,5 @@ Everything the human typed. In a two-arm study this is the variable to hold cons
 | `Bash` | `/BATCH_SIZE` |
 | `Bash` | `/LEARNING_RATE` |
 | `Bash` | `/WEIGHT_DECAY` |
+| `Bash` | `/N_MODELS` |
 
