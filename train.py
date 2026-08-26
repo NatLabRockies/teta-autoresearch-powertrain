@@ -29,7 +29,6 @@ LINK_FEATURES = [
     "junction_turn_degrees",
     "prev_grade_percent",
     "prev_miles",
-    "prev_hours",
 ]
 
 TARGET = "energy_rate_gge"
@@ -102,11 +101,6 @@ def load_data() -> pd.DataFrame:
     # urban context -- closely spaced intersections -- which changes how much
     # of this link is spent accelerating away from the last one.
     df["prev_miles"] = df.groupby("journey_id")["miles"].shift(1).fillna(0.0)
-    # How long the vehicle spent on the preceding link. exp19 suggests the
-    # lookback works partly as its own reliability estimate, and duration is
-    # the sharpest form of that: it is how stale prev_speed_mph is as a guess
-    # at the speed actually carried into this link.
-    df["prev_hours"] = df["prev_miles"] / np.maximum(df["prev_speed_mph"], 0.1)
     # Specific kinetic energy change per unit distance, (v^2 - v_prev^2)/(2d).
     # This is the physics form of speed_delta: it carries the same units as the
     # target (energy per mile), so it should map onto the target more directly
