@@ -129,3 +129,4 @@ Updated after each experiment. Format:
 - [x] exp30: move three ensemble members from the out-of-fold pass to the final one (5/5 -> 3 out-of-fold, 8 final) -> rmse=0.004852, trip_rmse=0.001272 (discard) [rmse -0.06%, trip +0.00%]
 - [x] exp31: raise the sequence blend weight from 0.25 to 0.32 -> rmse=0.004851, trip_rmse=0.001279 (discard) [rmse -0.08%, trip +0.55%]
 - [x] exp32: raise the journey-offset shrinkage from 20 to 30 links -> rmse=0.004850, trip_rmse=0.001278 (discard) [rmse -0.10%, trip +0.47%]
+- [x] exp33: narrow the sequence member from 128 to 96 channels -> rmse=0.004842, trip_rmse=0.001269 (keep) [rmse -0.27%, trip -0.24%]
