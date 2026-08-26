@@ -120,14 +120,11 @@ def load_data() -> pd.DataFrame:
     # intersection turn is a different event: it is where a driver actually
     # brakes and reaccelerates. Uses the one-link lookback, so a trip's first
     # link has no junction and is filled with a straight-ahead 0 degrees.
-    # Signed rather than absolute: a left turn crosses oncoming traffic and a
-    # right turn does not, so the two are not the same event. Nothing is lost
-    # by keeping the sign, since a ReLU pair reconstructs the magnitude.
     df["exit_heading"] = geom["exit_heading"]
     prev_exit = df.groupby("journey_id")["exit_heading"].shift(1)
     turn = geom["entry_heading"] - prev_exit.to_numpy()
     df["junction_turn_degrees"] = np.nan_to_num(
-        np.degrees(np.arctan2(np.sin(turn), np.cos(turn)))
+        np.abs(np.degrees(np.arctan2(np.sin(turn), np.cos(turn))))
     )
     return df
 
