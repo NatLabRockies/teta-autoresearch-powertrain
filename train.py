@@ -37,7 +37,7 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 EARTH_RADIUS_MILES = 3958.7613
 
 # --- training config ---
-HIDDEN = 512
+HIDDEN = 256
 BATCH_SIZE = 8192
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 200
