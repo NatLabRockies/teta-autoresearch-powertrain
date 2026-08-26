@@ -137,3 +137,4 @@ Updated after each experiment. Format:
 - [x] exp38: widen the now two-block sequence member from 64 back to 128 channels -> rmse=0.004833, trip_rmse=0.001261 (discard) [rmse +0.39%, trip -0.16%]
 - [x] exp39: re-test the blend weight at 0.30 now that the sequence member is smaller and better -> rmse=0.004807, trip_rmse=0.001263 (keep) [rmse -0.15%, trip +0.00%]
 - [x] exp40: raise the blend weight from 0.30 to 0.35 -> rmse=0.004800, trip_rmse=0.001274 (discard) [rmse -0.15%, trip +0.87%]
+- [x] exp41: halve the sequence batch size from 32768 to 16384 tokens -> rmse=0.004823, trip_rmse=0.001269 (discard) [rmse +0.33%, trip +0.48%]
