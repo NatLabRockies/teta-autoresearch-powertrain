@@ -146,16 +146,10 @@ def load_data() -> pd.DataFrame:
 
 
 def build_model(n_features: int) -> nn.Module:
-    # LayerNorm, not dropout or BatchNorm. exp38 showed that anything behaving
-    # differently at fit time than at prediction time injects a systematic
-    # offset, which is the one thing trip_rmse cannot absorb. LayerNorm is a
-    # deterministic per-sample transform, so it carries no such mismatch.
     return nn.Sequential(
         nn.Linear(n_features, HIDDEN),
-        nn.LayerNorm(HIDDEN),
         nn.ReLU(),
         nn.Linear(HIDDEN, HIDDEN),
-        nn.LayerNorm(HIDDEN),
         nn.ReLU(),
         nn.Linear(HIDDEN, 1),
     )
