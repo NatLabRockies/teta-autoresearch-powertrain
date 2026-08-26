@@ -127,3 +127,4 @@ Updated after each experiment. Format:
 - [x] exp28: drop the journey_gge_per_mile feature now that the post-hoc offset is itself distance-weighted -> rmse=0.004974, trip_rmse=0.001289 (discard) [rmse +0.30%, trip -0.23%]
 - [x] exp29: blend in a dilated-CNN sequence member at weight 0.25, trained on the leftover budget -> rmse=0.004855, trip_rmse=0.001272 (keep) [rmse -2.10%, trip -1.55%]
 - [x] exp30: move three ensemble members from the out-of-fold pass to the final one (5/5 -> 3 out-of-fold, 8 final) -> rmse=0.004852, trip_rmse=0.001272 (discard) [rmse -0.06%, trip +0.00%]
+- [x] exp31: raise the sequence blend weight from 0.25 to 0.32 -> rmse=0.004851, trip_rmse=0.001279 (discard) [rmse -0.08%, trip +0.55%]
