@@ -24,6 +24,7 @@ LINK_FEATURES = [
     "grade_percent",
     "miles",
     "prev_speed_mph",
+    "ke_delta_per_mile",
     "sinuosity",
     "prev_grade_percent",
 ]
@@ -79,6 +80,13 @@ def load_data() -> pd.DataFrame:
     df["prev_grade_percent"] = (
         df.groupby("journey_id")["grade_percent"].shift(1).fillna(0.0)
     )
+    # Specific kinetic energy change per unit distance, (v^2 - v_prev^2)/(2d).
+    # This is the physics form of speed_delta: it carries the same units as the
+    # target (energy per mile), so it should map onto the target more directly
+    # than a raw speed difference does.
+    df["ke_delta_per_mile"] = (
+        df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2
+    ) / (2.0 * df["miles"])
     # Geometry: how much longer the link is than the straight line between its
     # endpoints. A curvier link forces cornering at a given average speed, and
     # the value is a static road attribute so it is free at inference time.

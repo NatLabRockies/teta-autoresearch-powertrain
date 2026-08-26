@@ -13,3 +13,4 @@ ea00a2e	MLP	0.007837	0.002453	discard	speed_mph,grade_percent,miles,prev_speed_m
 b28a0ac	MLP	0.007736	0.002350	keep	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,prev_grade_percent	cosine-anneal the learning rate to zero over the 200 epochs
 5508202	MLP	0.007751	0.002357	discard	speed_mph,grade_percent,miles,prev_speed_mph,speed_delta,ke_delta_per_mile,sinuosity,prev_grade_percent	MAX_EPOCHS 200 -> 400 under the cosine schedule
 5291e75	MLP	0.007730	0.002344	keep	speed_mph,grade_percent,miles,prev_speed_mph,ke_delta_per_mile,sinuosity,prev_grade_percent	drop speed_delta — a linear layer can form the difference itself
+0d09d7f	MLP	0.007739	0.002353	discard	speed_mph,grade_percent,miles,prev_speed_mph,sinuosity,prev_grade_percent	drop ke_delta_per_mile, testing whether the exp13 removal lesson extends to nonlinear features
