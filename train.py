@@ -159,7 +159,7 @@ def out_of_fold_residual(train_df: pd.DataFrame, y_train: np.ndarray) -> np.ndar
     residual = np.empty(len(train_df), dtype=np.float64)
     for held_out in (0, 1):
         fit = fold != held_out
-        model = build_model()
+        model = Ensemble()
         model.fit(train_df.loc[fit, LINK_FEATURES], y_train[fit])
         rows = ~fit
         residual[rows] = y_train[rows] - model.predict(
@@ -194,15 +194,44 @@ def load_data() -> pd.DataFrame:
     return add_features(df)
 
 
-def build_model() -> HistGradientBoostingRegressor:
+# How many boosted models to average, and how much of the feature set each
+# split of each of them may look at.
+N_ENSEMBLE = 5
+FEATURE_SUBSAMPLE = 0.7
+
+
+def build_model(seed: int = 52) -> HistGradientBoostingRegressor:
     model_params = {
         "max_iter": 2000,
         "learning_rate": 0.1,
         "max_leaf_nodes": 31,
+        "max_features": FEATURE_SUBSAMPLE,
         "early_stopping": False,
-        "random_state": 52,
+        "random_state": seed,
     }
     return HistGradientBoostingRegressor(**model_params)
+
+
+class Ensemble:
+    """Average several boosted models that each see part of the feature set.
+
+    Exp12 showed the model sits just past its capacity optimum: extra rounds
+    started fitting per-link noise. Averaging decorrelated fits removes variance
+    without adding any, which is the one way left to spend the unused budget
+    that does not also buy more overfitting. Feature subsampling is what makes
+    the members differ -- the members are otherwise deterministic.
+    """
+
+    def __init__(self) -> None:
+        self.members = [build_model(52 + i) for i in range(N_ENSEMBLE)]
+
+    def fit(self, x: pd.DataFrame, y: np.ndarray) -> "Ensemble":
+        for member in self.members:
+            member.fit(x, y)
+        return self
+
+    def predict(self, x: pd.DataFrame) -> np.ndarray:
+        return np.mean([member.predict(x) for member in self.members], axis=0)
 
 
 def train_model() -> dict[str, float]:
@@ -218,7 +247,7 @@ def train_model() -> dict[str, float]:
     journey_id_te = test_df["journey_id"].to_numpy()
     miles_te = test_df["miles"].to_numpy(dtype=np.float32)
 
-    model = build_model()
+    model = Ensemble()
     residual = out_of_fold_residual(train_df, y_train)
     model.fit(train_df[LINK_FEATURES], y_train)
     predicted = model.predict(test_df[LINK_FEATURES]) + journey_offset(
