@@ -31,7 +31,6 @@ LINK_FEATURES = [
     "prev_miles",
     "prev_sinuosity",
     "vertices_per_mile",
-    "link_bend_degrees",
 ]
 
 TARGET = "energy_rate_gge"
@@ -136,14 +135,6 @@ def load_data() -> pd.DataFrame:
     # intersection turn is a different event: it is where a driver actually
     # brakes and reaccelerates. Uses the one-link lookback, so a trip's first
     # link has no junction and is filled with a straight-ahead 0 degrees.
-    # The link's own net bend, entry bearing to exit bearing. Distinct from
-    # sinuosity, which is a length ratio, and from the exp7 summed interior
-    # turns: a link can be long and gently curving with low sinuosity yet still
-    # swing the vehicle through a large net heading change.
-    bend = geom["exit_heading"] - geom["entry_heading"]
-    df["link_bend_degrees"] = np.abs(
-        np.degrees(np.arctan2(np.sin(bend), np.cos(bend)))
-    )
     df["exit_heading"] = geom["exit_heading"]
     prev_exit = df.groupby("journey_id")["exit_heading"].shift(1)
     turn = geom["entry_heading"] - prev_exit.to_numpy()
