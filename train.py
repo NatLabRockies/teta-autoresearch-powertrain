@@ -28,6 +28,7 @@ LINK_FEATURES = [
     "sinuosity",
     "junction_turn_degrees",
     "prev_grade_percent",
+    "prev_miles",
 ]
 
 TARGET = "energy_rate_gge"
@@ -96,6 +97,10 @@ def load_data() -> pd.DataFrame:
     df["prev_grade_percent"] = (
         df.groupby("journey_id")["grade_percent"].shift(1).fillna(0.0)
     )
+    # Third of the one-link lookback triple. A short preceding link means dense
+    # urban context -- closely spaced intersections -- which changes how much
+    # of this link is spent accelerating away from the last one.
+    df["prev_miles"] = df.groupby("journey_id")["miles"].shift(1).fillna(0.0)
     # Specific kinetic energy change per unit distance, (v^2 - v_prev^2)/(2d).
     # This is the physics form of speed_delta: it carries the same units as the
     # target (energy per mile), so it should map onto the target more directly
