@@ -143,6 +143,12 @@ def train_model() -> dict[str, float]:
 
     model = build_model(len(LINK_FEATURES)).to(device)
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    # Anneal the step size to zero over the run. A constant rate leaves the
+    # weights oscillating around the minimum when the loop stops, and exp10
+    # showed that bumpiness costs trip_rmse far more than it costs link rmse.
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=MAX_EPOCHS
+    )
     loss_fn = nn.MSELoss()
 
     n = xt.shape[0]
@@ -155,6 +161,7 @@ def train_model() -> dict[str, float]:
             loss = loss_fn(model(xt[idx]), yt[idx])
             loss.backward()
             optimizer.step()
+        scheduler.step()
         if time.time() - t_train > TRAIN_SECONDS:
             break
 
