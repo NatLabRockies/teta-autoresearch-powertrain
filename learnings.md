@@ -4,16 +4,17 @@ Accumulated across sessions. Sessions so far: `bev-aug26`.
 
 ## Best known configuration
 
-As of exp20 of `bev-aug26`, commit `8660022`:
+As of exp35 of `bev-aug26`, commit `9ff5e20`:
 
-- **Model**: MLP, 9 → 256 → 256 → 1, ReLU, Adam lr 1e-3 cosine-annealed to zero, batch 8192,
+- **Model**: MLP, 11 → 256 → 256 → 1, ReLU, Adam lr 1e-3 cosine-annealed to zero, batch 8192,
   200 epochs, MSE on a standardized target, on GPU.
 - **Features**: `speed_mph`, `grade_percent`, `miles`, `prev_speed_mph`, `ke_delta_per_mile`,
-  `sinuosity`, `junction_turn_degrees`, `prev_grade_percent`, `prev_miles`
-- **Metrics**: `rmse` 0.006954, `trip_rmse` 0.002266
+  `sinuosity`, `junction_turn_degrees`, `prev_grade_percent`, `prev_miles`, `prev_sinuosity`,
+  `vertices_per_mile`
+- **Metrics**: `rmse` 0.006837, `trip_rmse` 0.002248
 - Against the original scaffold baseline (`rmse` 0.013345, `trip_rmse` 0.003037) that is
-  **−47.9% link RMSE and −25.4% trip RMSE**.
-- Runtime 116s of the 600s budget.
+  **−48.8% link RMSE and −26.0% trip RMSE**.
+- Runtime 132s of the 600s budget.
 
 ## What works
 
@@ -65,6 +66,29 @@ As of exp20 of `bev-aug26`, commit `8660022`:
 - **Single-variable transforms and two-input ratios.** `hours_per_mile` = 1/speed (exp15) and
   `prev_hours` = prev_miles/prev_speed (exp20) both tied exactly. See the hand-engineering rule
   below — these are a closed direction.
+- **Network depth** (exp25) and a **linear skip connection** (exp34) both failed, as did
+  **SiLU** (exp24). With width and length already closed, the architecture is settled at
+  2×256 ReLU against size *and* inductive-bias changes alike.
+- **Every optimizer knob.** Batch 4096 (exp27), batch 16384 (exp28) and lr 2e-3 (exp29) all
+  produced the same signature — link RMSE slightly worse, trip RMSE a sliver better. Both batch
+  directions failing means 8192 is a true optimum. That the trip metric ticked down in all
+  three says movements below ~0.2% on `trip_rmse` are at the metric's resolution floor and
+  should not be read as signal.
+- **Intra-link shape is closed for good.** Summed interior turn (exp7) and net entry-to-exit
+  bend (exp35) both tied. At 3.7 vertices per link, sinuosity determines the rest.
+- **Loss shaping by `miles²`** (exp22) made *both* metrics worse, including the one it targeted.
+  See below. This also rules out predicting `energy_gge` instead of the rate without testing it,
+  since MSE on `rate × miles` is exactly that weighted loss.
+- **Compressing `ke_delta_per_mile` with a signed log** (exp33) regressed both metrics. The
+  heavy tail is signal, not a conditioning defect: a large speed change over a very short link
+  genuinely is a large energy rate. With a heavy-tailed target, matching the target's own scale
+  behaviour beats making the input well-conditioned.
+- **Turn handedness** (exp21). Signed rather than absolute junction turn split the metrics. The
+  data is simulated over real drive-cycle traces, so any left-turn waiting is already in the
+  trace's speed profile.
+- **Copying a successful feature's functional form** (exp32). `corner_energy_per_mile` used the
+  same three-input nonlinear shape as `ke_delta_per_mile` and gained nothing. The form is not
+  what made that feature work; being the dominant physics of the target is.
 
 ## Structural insight: why the two metrics diverge
 
@@ -83,6 +107,18 @@ each link error but whether errors **cancel or accumulate** along the journey.
 **Practical rule for this domain: to move `trip_rmse`, make the model smoother or less biased;
 to move `rmse`, give it more information.** Since a keep requires Pareto dominance on both, the
 most productive experiments are the ones that do one without costing the other.
+
+**Read "smoothness" as systematic bias over a *region* of feature space, not as analytic
+smoothness of the fit.** Swapping ReLU for SiLU (exp24) made both metrics worse and moved trip
+*less* than link — the opposite of the predicted signature. ReLU kinks are far below the scale
+at which regional bias operates.
+
+A related caution from exp22: the natural way to target `trip_rmse` is to weight the training
+loss by `miles²`, since a link's share of trip error looks like it should go as `miles²`. It
+made both metrics worse. That decomposition assumes link errors within a trip are
+**independent**, and they are not — they largely cancel. Trip error is driven by systematic
+bias, not by summed variance, and reweighting shrinks the effective sample without touching the
+bias.
 
 ## When hand-engineering a feature pays
 
@@ -103,6 +139,28 @@ inputs already present, is something 256 ReLU units reproduce on their own. A te
 a squared difference by a *third* input is not. Note this rule is model-family dependent — the
 whole first group is valuable again the moment the model goes back to being a tree.
 
+## Where the remaining error actually is (diagnostic, after exp25)
+
+Trained the best config and binned the test residuals. Two results, both load-bearing:
+
+1. **Bias in feature space is essentially zero** — between 1e-5 and 1e-4 in every speed, grade,
+   miles and turn decile, against a target standard deviation of 0.014. The model is already
+   well calibrated, which is why every architecture and optimizer change after exp13 failed.
+   There is no systematic regional bias left to remove.
+2. **The error is concentrated in urban conditions.** The two slowest speed deciles (< 23 mph)
+   hold **46%** of total squared error, the two shortest `miles` deciles hold **43%**, and the
+   sharpest junction-turn quintile holds **30%**. These are exactly the conditions where a
+   link-average speed hides the most about the real speed profile.
+
+**Caution for whoever reads this next:** binning residuals by the *target* shows a large
+apparent bias in the top and bottom deciles. That is a statistical artifact — conditioning on an
+extreme `y` selects on noise, so regression to the mean appears even for an optimal predictor.
+Do not chase it. Bin by *features*, never by the target.
+
+The exp26 ensemble is the confirmation: averaging three independent fits bought only 0.6%. If
+fitting variance were a meaningful share of what is left, it would have bought far more. **The
+model is close to the information ceiling available under one-link-lookback inference.**
+
 ## What is actually limiting the model
 
 Training time (exp12), width up (exp16), and width down (exp17) were all ruled out in
@@ -113,14 +171,17 @@ closed direction for now; features are the frontier.
 
 ## Open hypotheses
 
-- Following the exp19 reliability insight: pair the other lookback values with reliability
-  context, or give the *current* link the same treatment.
-- Signed rather than absolute junction turn — left turns cross oncoming traffic and cost more
-  than right turns, so the sign may carry real asymmetry that `abs()` currently discards.
-- Loss shaping is untouched. MSE on the standardized target optimizes link error directly;
-  nothing yet targets the trip objective or the heavy regen tail. Note the trip metric weights
-  a link by `miles`, which the link loss does not.
-- Depth (3+ hidden layers) is untested, though width being settled makes it a weak prospect.
+- **The lookback family is complete and was the richest seam in the session.** `speed`, `grade`,
+  `miles` and `sinuosity` are all shifted, and the junction turn consumes the previous link's
+  exit heading. Under a strict one-link limit there is nothing left to shift. Any future gain
+  has to come from a new source.
+- **Re-test marginal keeps after a model-family change — value moves both ways.** `speed_delta`
+  was worth 9.5% to the forest and became removable (exp13); `prev_grade_percent` was worth
+  0.16% to the forest and is now worth roughly twice that (exp31). Do not assume a
+  family change only prunes.
+- Regularization proper (dropout, weight decay) is still untested.
+- The 46% of error below 23 mph is the standing target. Nothing tried so far distinguishes rows
+  *within* that regime; a feature that does is where a real gain would come from.
 - Every result so far is deterministic (fixed `random_state`, fixed split), so sub-1% deltas are
   real and reproducible rather than noise. Do not dismiss small movements as run-to-run variance.
 
