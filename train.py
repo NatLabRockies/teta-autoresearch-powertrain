@@ -25,6 +25,7 @@ LINK_FEATURES = [
     "miles",
     "prev_speed_mph",
     "ke_delta_per_mile",
+    "sinuosity",
     "junction_turn_degrees",
     "prev_grade_percent",
     "prev_miles",
