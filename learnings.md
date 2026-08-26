@@ -23,11 +23,23 @@ Treat it as findings, not as a spec.
 - The two metrics disagree by construction: `rmse` weights every link equally, `trip_rmse` is
   effectively mileage-weighted and lets within-trip errors cancel.
 
-## Result of session bev-aug25
+## Result of session bev-aug25 (50 experiments, 15 keeps)
 
 Baseline (20-tree RandomForest on speed/grade/miles): rmse **0.013345**, trip_rmse **0.003037**.
-Best (exp29): rmse **0.004855** (-63.6%), trip_rmse **0.001272** (-58.1%). Link-level R^2 went
-from 0.115 to 0.883. Runtime 511s of the 600s budget.
+Best (exp48): rmse **0.004785** (-64.1%), trip_rmse **0.001231** (-59.5%). Link-level R^2 went
+from 0.115 to 0.886. Runtime 504s of the 600s budget.
+
+Where the gains came from, by phase:
+
+| phase | experiments | rmse | trip_rmse |
+|---|---|---|---|
+| neighbour-link physics features | exp2-14 | 0.013345 -> 0.005064 | 0.003037 -> 0.001951 |
+| the journey offset | exp16-20, 25 | 0.005064 -> 0.004959 | 0.001951 -> 0.001292 |
+| ensembling + the sequence blend | exp23, 29, 33-36 | 0.004959 -> 0.004814 | 0.001292 -> 0.001263 |
+| joint tuning of the blend | exp39, 45, 48 | 0.004814 -> 0.004785 | 0.001263 -> 0.001231 |
+
+The two metrics were limited by different things throughout and were fixed by different phases:
+features carried `rmse`, the journey offset carried `trip_rmse`.
 
 ## Finding 1: link energy rate is dominated by vehicle dynamics, not steady-state speed and grade
 
@@ -95,6 +107,18 @@ it gave rmse -2.1% and trip_rmse -1.6% — the largest single gain after exp13.
 The lesson generalises: when a model is noise-limited rather than signal-limited, the question to
 ask about a candidate member is its error correlation, not its error size.
 
+## Finding 4: four interior optima, and one unexplained split
+
+Blend weight (0.30), sequence receptive field (+/-6 links), sequence batch (32768 tokens) and
+sequence learning rate (4.5e-3) were all bracketed on both sides -- worth trusting as tuned rather
+than as unexplored plateaus. Journey-offset shrinkage was probed four times (12, 15, 30, 40) and
+wants 20 regardless of which residual feeds it.
+
+One result is not explained. Every capacity increase tried made `rmse` worse and `trip_rmse`
+better (wider trees exp5, more rounds exp12, wider CNN exp38) *except* raising the tree learning
+rate at fixed rounds (exp43), which did the reverse. Step size is evidently not the same knob as
+capacity, but I have no mechanism for the sign, and it is recorded as open rather than explained.
+
 ## Rules of thumb this session earned
 
 1. **Order matters: features before learners.** RandomForest -> HistGradientBoosting was a *dead
@@ -112,6 +136,14 @@ ask about a candidate member is its error correlation, not its error size.
 4. **A hyperparameter tuned on a cheap stand-in only transfers if the stand-in's noise matches.**
    The offset shrinkage optimum moved from 40 back to 20 between a single-model grid and the real
    ensemble (exp26).
+5. **Constants outlive the model they were tuned for.** `SEQ_LR` was inherited from a 4-block,
+   128-channel, 430-second CNN and was still in place three architecture keeps and a 45-second
+   schedule later; revisiting it was worth -0.25% rmse / -0.73% trip (exp48). The blend weight had
+   the same problem (exp39). When a component changes, walk its constants again.
+6. **Mis-scaled and mis-targeted look identical from the metrics.** The journey offset appeared to
+   under-correct; four shrinkage experiments all lost. It was fitted to the wrong residual -- the
+   trees' rather than the blend's -- and one line fixing that gained -1.8% trip (exp44 vs exp45).
+   Before tuning a correction's size, check what it is a correction *of*.
 
 ## Dead ends (do not repeat)
 
@@ -140,14 +172,29 @@ ask about a candidate member is its error correlation, not its error size.
 - A **structurally different** second sequence member (bi-GRU, attention) should correlate less
   with the CNN than a second CNN seed would, but there is no budget left for it without cutting
   tree members. Worth testing whether 3 tree members + 2 diverse sequence members beats 5 + 1.
-- The journey offset is estimated from tree-only residuals but applied to the blend; a blend-aware
-  offset (needs out-of-fold sequence predictions, i.e. two CNN trainings) has not been tried.
-- The time budget was never the binding constraint until exp23. It is now: 511s of 600s.
+  The right way to decide is the exp29 diagnostic: measure the candidate's error *correlation*
+  with the incumbent before judging it on its own error.
+- The sequence half of the blend residual is in-sample. Honest out-of-fold sequence predictions
+  need two CNN trainings and there was no budget; exp47 suggests the bias is small, but it has
+  not been measured directly.
+- Nothing was ever tried to exploit the heteroscedasticity directly: link rate variance falls
+  monotonically with link length by a factor of ~3 across the quintiles, and both members fit an
+  unweighted squared loss. Unweighted MSE is the metric-matched objective so this may be a dead
+  end by construction, but it was reasoned about rather than tested.
+- The time budget was never the binding constraint until exp23. It is now: 504s of 600s, and any
+  new component has to be paid for out of an existing one.
 
 ## Best known configuration
 
-Commit `2fa4068` (exp29). Blend of `0.75 x` a 5-member feature-subsampled
-`HistGradientBoostingRegressor(max_iter=2000, learning_rate=0.1, max_leaf_nodes=31,
-max_features=0.7)` and `0.25 x` a 4-block dilated 1-D CNN over the journey's link chain, plus a
-distance-weighted per-journey residual offset. 13 features. **rmse 0.004855, trip_rmse 0.001272**
-in 511s.
+Commit `bc07466` (exp48). **rmse 0.004785, trip_rmse 0.001231** in 504s of the 600s budget.
+
+- 13 features: `speed_mph`, `grade_percent`, `miles`, `dke_per_mile`, `dke_in_link`,
+  `gap_seconds`, `prev_miles`, `next_miles`, `next_gap_seconds`, `prev2_speed`, `dv_out`,
+  `journey_rate`, `journey_gge_per_mile`.
+- **0.70 x** a 5-member ensemble of `HistGradientBoostingRegressor(max_iter=2000,
+  learning_rate=0.1, max_leaf_nodes=31, max_features=0.7)`, members differing only by seed.
+- **0.30 x** a 2-block dilated 1-D CNN (64 channels, kernel 5, dilations 1 and 2, so +/-6 links)
+  over each journey's link chain, trained on whatever the trees leave of the budget at lr 4.5e-3,
+  and given the 11 per-link features only -- never the journey columns.
+- Plus a distance-weighted per-journey offset, shrunk by 20 links, measured against the *blend's*
+  residual: the trees' half out-of-fold, the sequence half in-sample.
