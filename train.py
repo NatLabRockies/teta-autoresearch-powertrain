@@ -237,7 +237,7 @@ FEATURE_SUBSAMPLE = 0.7
 def build_model(seed: int = 52) -> HistGradientBoostingRegressor:
     model_params = {
         "max_iter": 2000,
-        "learning_rate": 0.1,
+        "learning_rate": 0.12,
         "max_leaf_nodes": 31,
         "max_features": FEATURE_SUBSAMPLE,
         "early_stopping": False,
