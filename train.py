@@ -2,6 +2,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import shapely
 from sklearn.ensemble import RandomForestRegressor
 
 from harness import (
@@ -24,12 +25,33 @@ LINK_FEATURES = [
     "prev_speed_mph",
     "speed_delta",
     "ke_delta_per_mile",
+    "sinuosity",
 ]
 
 TARGET = "energy_rate_gge"
 
 # --- data config ---
 DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
+
+
+EARTH_RADIUS_MILES = 3958.7613
+
+
+def straight_line_miles(geometry: pd.Series) -> np.ndarray:
+    """Great-circle distance between each linestring's two endpoints."""
+    geoms = shapely.from_wkb(geometry.to_numpy())
+    coords = shapely.get_coordinates(geoms)
+    n_points = shapely.get_num_coordinates(geoms)
+    end = np.cumsum(n_points) - 1
+    start = end - n_points + 1
+
+    lon1, lat1 = np.radians(coords[start, 0]), np.radians(coords[start, 1])
+    lon2, lat2 = np.radians(coords[end, 0]), np.radians(coords[end, 1])
+    a = (
+        np.sin((lat2 - lat1) / 2) ** 2
+        + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
+    )
+    return 2.0 * EARTH_RADIUS_MILES * np.arcsin(np.sqrt(a))
 
 
 def load_data() -> pd.DataFrame:
@@ -51,6 +73,14 @@ def load_data() -> pd.DataFrame:
     df["ke_delta_per_mile"] = (
         df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2
     ) / (2.0 * df["miles"])
+    # Geometry: how much longer the link is than the straight line between its
+    # endpoints. A curvier link forces cornering at a given average speed, and
+    # the value is a static road attribute so it is free at inference time.
+    # Loop links (start == end) would divide by zero, so the floor is the
+    # smallest link length in the data rather than an arbitrary epsilon.
+    df["sinuosity"] = df["miles"] / np.maximum(
+        straight_line_miles(df["geometry"]), 1e-4
+    )
     return df
 
 
