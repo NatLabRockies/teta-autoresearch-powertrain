@@ -30,6 +30,7 @@ LINK_FEATURES = [
     "prev_grade_percent",
     "prev_miles",
     "prev_sinuosity",
+    "vertices_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
@@ -78,6 +79,7 @@ def geometry_features(geometry: pd.Series) -> dict[str, np.ndarray]:
         "endpoint_miles": 2.0 * EARTH_RADIUS_MILES * np.arcsin(np.sqrt(a)),
         # Bearings of the first and last segments, so the turn taken at the
         # junction between two consecutive links can be measured.
+        "n_vertices": n_points.astype(np.float64),
         "entry_heading": _heading(coords, start, start + 1),
         "exit_heading": _heading(coords, end - 1, end),
     }
@@ -116,6 +118,12 @@ def load_data() -> pd.DataFrame:
     # smallest link length in the data rather than an arbitrary epsilon.
     geom = geometry_features(df["geometry"])
     df["sinuosity"] = df["miles"] / np.maximum(geom["endpoint_miles"], 1e-4)
+    # How finely the road is drawn. Sinuosity is a length ratio and says the
+    # path bends; vertex density is a different statistic and stands in for
+    # road class -- a detailed, heavily vertexed road is typically an urban
+    # street rather than a highway, and the exp25 diagnostic put 46% of the
+    # remaining error below 23 mph.
+    df["vertices_per_mile"] = geom["n_vertices"] / df["miles"]
     # Shape of the link the vehicle came off. A curvy preceding link means it
     # was already cornering on entry, which bears on how much of prev_speed_mph
     # actually carried through. A straight link, 1.0, is the fill for a start.
