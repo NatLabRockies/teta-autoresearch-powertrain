@@ -27,6 +27,7 @@ LINK_FEATURES = [
     "ke_delta_per_mile",
     "sinuosity",
     "junction_turn_degrees",
+    "prev_grade_percent",
     "prev_miles",
     "prev_sinuosity",
     "vertices_per_mile",
@@ -93,6 +94,12 @@ def load_data() -> pd.DataFrame:
     # The first link of a journey has no predecessor and is filled with 0 --
     # the vehicle starts from rest, so that is the physically true value.
     df["prev_speed_mph"] = df.groupby("journey_id")["speed_mph"].shift(1).fillna(0.0)
+    # The other half of the one-link lookback: the grade the vehicle was on as
+    # it entered this link. A flat first link is the natural fill for a trip
+    # start, matching the at-rest assumption used for prev_speed_mph.
+    df["prev_grade_percent"] = (
+        df.groupby("journey_id")["grade_percent"].shift(1).fillna(0.0)
+    )
     # Third of the one-link lookback triple. A short preceding link means dense
     # urban context -- closely spaced intersections -- which changes how much
     # of this link is spent accelerating away from the last one.
