@@ -49,6 +49,7 @@ MAX_EPOCHS = 200
 # budget and counts that as a crash, so the loop stops itself with room to
 # spare for data loading and scoring.
 TRAIN_SECONDS = 400
+WEIGHT_DECAY = 1e-4
 SEED = 52
 
 
@@ -184,7 +185,11 @@ def train_model() -> dict[str, float]:
     xe = torch.from_numpy((x_test - x_mean) / x_std).to(device)
 
     model = build_model(len(LINK_FEATURES)).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    # AdamW rather than Adam: regularization is the one model-side knob never
+    # tested, and decoupled weight decay is its cleanest form here.
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
+    )
     # Anneal the step size to zero over the run. A constant rate leaves the
     # weights oscillating around the minimum when the loop stops, and exp10
     # showed that bumpiness costs trip_rmse far more than it costs link rmse.
