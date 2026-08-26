@@ -5,6 +5,14 @@ data/raw
 data/processed
 *.parquet
 
+# pixi environments (audit/ has its own, built from the arms' lockfile)
+.pixi/*
+!.pixi/config.toml
+
+# Trained models the audit caches between runs — rebuilt by `run_audit.py`
+audit/cache/
+audit/results/run.log
+
 __pycache__/
 *.pyc
 *.pkl
