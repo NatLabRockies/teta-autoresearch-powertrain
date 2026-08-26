@@ -26,6 +26,7 @@ LINK_FEATURES = [
     "prev_speed_mph",
     "ke_delta_per_mile",
     "sinuosity",
+    "junction_turn_degrees",
     "prev_grade_percent",
 ]
 
@@ -48,21 +49,36 @@ TRAIN_SECONDS = 400
 SEED = 52
 
 
-def straight_line_miles(geometry: pd.Series) -> np.ndarray:
-    """Great-circle distance between each linestring's two endpoints."""
+def _heading(coords: np.ndarray, tail: np.ndarray, head: np.ndarray) -> np.ndarray:
+    """Compass-plane bearing of each tail -> head segment, in radians."""
+    mean_lat = np.radians((coords[head, 1] + coords[tail, 1]) / 2)
+    east = (coords[head, 0] - coords[tail, 0]) * np.cos(mean_lat)
+    north = coords[head, 1] - coords[tail, 1]
+    return np.arctan2(north, east)
+
+
+def geometry_features(geometry: pd.Series) -> dict[str, np.ndarray]:
+    """Per-link shape values, decoding the WKB once and deriving all of them."""
     geoms = shapely.from_wkb(geometry.to_numpy())
     coords = shapely.get_coordinates(geoms)
     n_points = shapely.get_num_coordinates(geoms)
     end = np.cumsum(n_points) - 1
     start = end - n_points + 1
 
+    # Great-circle distance between each linestring's two endpoints.
     lon1, lat1 = np.radians(coords[start, 0]), np.radians(coords[start, 1])
     lon2, lat2 = np.radians(coords[end, 0]), np.radians(coords[end, 1])
     a = (
         np.sin((lat2 - lat1) / 2) ** 2
         + np.cos(lat1) * np.cos(lat2) * np.sin((lon2 - lon1) / 2) ** 2
     )
-    return 2.0 * EARTH_RADIUS_MILES * np.arcsin(np.sqrt(a))
+    return {
+        "endpoint_miles": 2.0 * EARTH_RADIUS_MILES * np.arcsin(np.sqrt(a)),
+        # Bearings of the first and last segments, so the turn taken at the
+        # junction between two consecutive links can be measured.
+        "entry_heading": _heading(coords, start, start + 1),
+        "exit_heading": _heading(coords, end - 1, end),
+    }
 
 
 def load_data() -> pd.DataFrame:
@@ -92,8 +108,18 @@ def load_data() -> pd.DataFrame:
     # the value is a static road attribute so it is free at inference time.
     # Loop links (start == end) would divide by zero, so the floor is the
     # smallest link length in the data rather than an arbitrary epsilon.
-    df["sinuosity"] = df["miles"] / np.maximum(
-        straight_line_miles(df["geometry"]), 1e-4
+    geom = geometry_features(df["geometry"])
+    df["sinuosity"] = df["miles"] / np.maximum(geom["endpoint_miles"], 1e-4)
+    # How far the vehicle turned at the junction it entered this link through.
+    # exp7 showed the bending *inside* a link is subsumed by sinuosity, but an
+    # intersection turn is a different event: it is where a driver actually
+    # brakes and reaccelerates. Uses the one-link lookback, so a trip's first
+    # link has no junction and is filled with a straight-ahead 0 degrees.
+    df["exit_heading"] = geom["exit_heading"]
+    prev_exit = df.groupby("journey_id")["exit_heading"].shift(1)
+    turn = geom["entry_heading"] - prev_exit.to_numpy()
+    df["junction_turn_degrees"] = np.nan_to_num(
+        np.abs(np.degrees(np.arctan2(np.sin(turn), np.cos(turn))))
     )
     return df
 
