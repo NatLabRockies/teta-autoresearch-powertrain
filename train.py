@@ -183,7 +183,7 @@ def out_of_fold_residual(train_df: pd.DataFrame, y_train: np.ndarray) -> np.ndar
     residual = np.empty(len(train_df), dtype=np.float64)
     for held_out in (0, 1):
         fit = fold != held_out
-        model = Ensemble(N_ENSEMBLE_OUT_OF_FOLD)
+        model = Ensemble()
         model.fit(train_df.loc[fit, LINK_FEATURES], y_train[fit])
         rows = ~fit
         residual[rows] = y_train[rows] - model.predict(
@@ -230,11 +230,7 @@ def load_data() -> pd.DataFrame:
 
 # How many boosted models to average, and how much of the feature set each
 # split of each of them may look at.
-N_ENSEMBLE = 8
-# The out-of-fold pass fits two more ensembles and only needs a journey's *mean*
-# residual, which averaging barely moves, so it runs a smaller one and hands the
-# saved fits to the ensemble that actually makes the predictions.
-N_ENSEMBLE_OUT_OF_FOLD = 3
+N_ENSEMBLE = 5
 FEATURE_SUBSAMPLE = 0.7
 
 
@@ -406,8 +402,8 @@ class Ensemble:
     the members differ -- the members are otherwise deterministic.
     """
 
-    def __init__(self, size: int = N_ENSEMBLE) -> None:
-        self.members = [build_model(52 + i) for i in range(size)]
+    def __init__(self) -> None:
+        self.members = [build_model(52 + i) for i in range(N_ENSEMBLE)]
 
     def fit(self, x: pd.DataFrame, y: np.ndarray) -> "Ensemble":
         for member in self.members:
