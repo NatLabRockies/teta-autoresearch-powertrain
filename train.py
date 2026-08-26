@@ -159,7 +159,7 @@ def out_of_fold_residual(train_df: pd.DataFrame, y_train: np.ndarray) -> np.ndar
     residual = np.empty(len(train_df), dtype=np.float64)
     for held_out in (0, 1):
         fit = fold != held_out
-        model = Ensemble()
+        model = build_model()
         model.fit(train_df.loc[fit, LINK_FEATURES], y_train[fit])
         rows = ~fit
         residual[rows] = y_train[rows] - model.predict(
