@@ -31,7 +31,6 @@ LINK_FEATURES = [
     "prev_miles",
     "prev_sinuosity",
     "vertices_per_mile",
-    "corner_energy_per_mile",
 ]
 
 TARGET = "energy_rate_gge"
@@ -141,16 +140,6 @@ def load_data() -> pd.DataFrame:
     turn = geom["entry_heading"] - prev_exit.to_numpy()
     df["junction_turn_degrees"] = np.nan_to_num(
         np.abs(np.degrees(np.arctan2(np.sin(turn), np.cos(turn))))
-    )
-    # Braking demand at the junction. Cornering itself does no work, but the
-    # speed a driver sheds going into a turn and rebuilds coming out does, and
-    # that scales with v^2 and with how sharp the turn is, spread over the link
-    # it is spread across. Same three-input nonlinear shape as
-    # ke_delta_per_mile, which is the one feature form that has kept paying.
-    df["corner_energy_per_mile"] = (
-        df["speed_mph"] ** 2
-        * np.radians(df["junction_turn_degrees"])
-        / df["miles"]
     )
     return df
 
