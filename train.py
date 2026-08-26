@@ -108,15 +108,9 @@ def load_data() -> pd.DataFrame:
     # This is the physics form of speed_delta: it carries the same units as the
     # target (energy per mile), so it should map onto the target more directly
     # than a raw speed difference does.
-    # Compressed with a signed log. Raw, the term spans several orders of
-    # magnitude -- a squared speed difference over a 0.002 mile link reaches
-    # ~1e6 -- so standardizing it sets the scale from rare outliers and squashes
-    # every typical value against zero. The log keeps the ordering and the sign
-    # while giving the network an input it can actually resolve.
-    ke_delta = (df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2) / (
-        2.0 * df["miles"]
-    )
-    df["ke_delta_per_mile"] = np.sign(ke_delta) * np.log1p(np.abs(ke_delta))
+    df["ke_delta_per_mile"] = (
+        df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2
+    ) / (2.0 * df["miles"])
     # Geometry: how much longer the link is than the straight line between its
     # endpoints. A curvier link forces cornering at a given average speed, and
     # the value is a static road attribute so it is free at inference time.
