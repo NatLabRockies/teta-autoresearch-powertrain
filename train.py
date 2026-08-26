@@ -26,6 +26,7 @@ LINK_FEATURES = [
     "prev_speed_mph",
     "ke_delta_per_mile",
     "sinuosity",
+    "hours_per_mile",
     "prev_grade_percent",
 ]
 
@@ -92,6 +93,12 @@ def load_data() -> pd.DataFrame:
     # the value is a static road attribute so it is free at inference time.
     # Loop links (start == end) would divide by zero, so the floor is the
     # smallest link length in the data rather than an arbitrary epsilon.
+    # Auxiliary load term. HVAC and electronics draw roughly constant power, so
+    # the energy they cost *per mile* is proportional to the time spent on the
+    # mile -- which is why a BEV is least efficient in slow traffic. 1/v is a
+    # sharp nonlinearity that a ReLU network approximates poorly near zero, so
+    # it is worth handing over explicitly.
+    df["hours_per_mile"] = 1.0 / np.maximum(df["speed_mph"], 0.1)
     df["sinuosity"] = df["miles"] / np.maximum(
         straight_line_miles(df["geometry"]), 1e-4
     )
