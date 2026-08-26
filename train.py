@@ -22,6 +22,7 @@ LINK_FEATURES = [
     "grade_percent",
     "miles",
     "prev_speed_mph",
+    "speed_delta",
 ]
 
 TARGET = "energy_rate_gge"
@@ -39,6 +40,9 @@ def load_data() -> pd.DataFrame:
     # The first link of a journey has no predecessor and is filled with 0 --
     # the vehicle starts from rest, so that is the physically true value.
     df["prev_speed_mph"] = df.groupby("journey_id")["speed_mph"].shift(1).fillna(0.0)
+    # Explicit acceleration proxy. A tree splits on one axis at a time and so
+    # cannot express speed_mph - prev_speed_mph from the two columns alone.
+    df["speed_delta"] = df["speed_mph"] - df["prev_speed_mph"]
     return df
 
 
