@@ -120,3 +120,4 @@ Updated after each experiment. Format:
 - [x] exp21: add dke_out_link, the exit half of the kinetic-energy change -> rmse=0.005014, trip_rmse=0.001419 (discard) [rmse -0.14%, trip +0.07%]
 - [x] exp22: fit least squares on the physics terms (grade, dke, speed) first and boost the trees on its residual -> rmse=0.005528, trip_rmse=0.001553 (discard) [rmse +10.10%, trip +9.52%]
 - [x] exp23: average an ensemble of 5 boosted models, each seeing a random 70% of the features at every split -> rmse=0.004967, trip_rmse=0.001362 (keep) [rmse -1.08%, trip -3.95%]
+- [x] exp24: score the out-of-fold residual with a single model instead of the whole ensemble, to buy back runtime -> rmse=0.004968, trip_rmse=0.001371 (discard) [rmse +0.02%, trip +0.66%]
