@@ -46,7 +46,7 @@ SEQUENCE_FEATURES = [f for f in LINK_FEATURES if not f.startswith("journey_")]
 TARGET = "energy_rate_gge"
 
 # --- sequence member ---
-CHANNELS = 128
+CHANNELS = 64
 DILATIONS = (1, 2)
 KERNEL = 5
 SEQ_LR = 3e-3
