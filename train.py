@@ -53,7 +53,7 @@ SEQ_LR = 3e-3
 SEQ_SECONDS = 60.0
 # Elapsed time by which sequence training must stop, whatever the trees took.
 SEQ_DEADLINE = 545.0
-MAX_TOKENS_PER_BATCH = 65536
+MAX_TOKENS_PER_BATCH = 32768
 # Weight on the sequence member in the blend. Its errors correlate 0.72 with
 # the trees', so a minority weight removes variance neither model can remove
 # alone; past ~0.35 its own higher error starts to dominate.

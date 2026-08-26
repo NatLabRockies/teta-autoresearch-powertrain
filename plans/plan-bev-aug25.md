@@ -138,3 +138,4 @@ Updated after each experiment. Format:
 - [x] exp39: re-test the blend weight at 0.30 now that the sequence member is smaller and better -> rmse=0.004807, trip_rmse=0.001263 (keep) [rmse -0.15%, trip +0.00%]
 - [x] exp40: raise the blend weight from 0.30 to 0.35 -> rmse=0.004800, trip_rmse=0.001274 (discard) [rmse -0.15%, trip +0.87%]
 - [x] exp41: halve the sequence batch size from 32768 to 16384 tokens -> rmse=0.004823, trip_rmse=0.001269 (discard) [rmse +0.33%, trip +0.48%]
+- [x] exp42: double the sequence batch size from 32768 to 65536 tokens -> rmse=0.004834, trip_rmse=0.001272 (discard) [rmse +0.56%, trip +0.71%]
