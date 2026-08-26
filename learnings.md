@@ -23,7 +23,7 @@ Treat it as findings, not as a spec.
 - The two metrics disagree by construction: `rmse` weights every link equally, `trip_rmse` is
   effectively mileage-weighted and lets within-trip errors cancel.
 
-## Result of session bev-aug25 (50 experiments, 15 keeps)
+## Result of session bev-aug25 (50 experiments, 25 keeps)
 
 Baseline (20-tree RandomForest on speed/grade/miles): rmse **0.013345**, trip_rmse **0.003037**.
 Best (exp48): rmse **0.004785** (-64.1%), trip_rmse **0.001231** (-59.5%). Link-level R^2 went
