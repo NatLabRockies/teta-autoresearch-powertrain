@@ -132,3 +132,4 @@ Updated after each experiment. Format:
 - [x] exp33: narrow the sequence member from 128 to 96 channels -> rmse=0.004842, trip_rmse=0.001269 (keep) [rmse -0.27%, trip -0.24%]
 - [x] exp34: narrow the sequence member from 96 to 64 channels -> rmse=0.004840, trip_rmse=0.001267 (keep) [rmse -0.04%, trip -0.16%]
 - [x] exp35: drop the dilation-8 block, shrinking the sequence receptive field from +/-30 links to +/-14 -> rmse=0.004832, trip_rmse=0.001264 (keep) [rmse -0.17%, trip -0.24%]
+- [x] exp36: drop the dilation-4 block too, shrinking the sequence receptive field from +/-14 links to +/-6 -> rmse=0.004814, trip_rmse=0.001263 (keep) [rmse -0.37%, trip -0.08%]
