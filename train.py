@@ -144,14 +144,32 @@ def load_data() -> pd.DataFrame:
     return df
 
 
+class SkipMLP(nn.Module):
+    """An MLP with a linear path from the inputs straight to the output.
+
+    Most of the physics here is close to linear in the right variables -- grade
+    is potential energy per mile, ke_delta_per_mile is acceleration energy per
+    mile -- so the skip lets a plain linear model carry that part exactly while
+    the hidden layers are left to fit only the nonlinear remainder.
+    """
+
+    def __init__(self, n_features: int) -> None:
+        super().__init__()
+        self.linear = nn.Linear(n_features, 1)
+        self.hidden = nn.Sequential(
+            nn.Linear(n_features, HIDDEN),
+            nn.ReLU(),
+            nn.Linear(HIDDEN, HIDDEN),
+            nn.ReLU(),
+            nn.Linear(HIDDEN, 1),
+        )
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.linear(x) + self.hidden(x)
+
+
 def build_model(n_features: int) -> nn.Module:
-    return nn.Sequential(
-        nn.Linear(n_features, HIDDEN),
-        nn.ReLU(),
-        nn.Linear(HIDDEN, HIDDEN),
-        nn.ReLU(),
-        nn.Linear(HIDDEN, 1),
-    )
+    return SkipMLP(n_features)
 
 
 def train_model() -> dict[str, float]:
