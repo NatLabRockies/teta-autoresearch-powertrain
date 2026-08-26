@@ -147,6 +147,7 @@ def train_model() -> dict[str, float]:
     df = load_data()
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
+    miles_tr = train_df["miles"].to_numpy(dtype=np.float32)
     y_train = train_df[TARGET].to_numpy(dtype=np.float32)
     y_test = test_df[TARGET].to_numpy(dtype=np.float32)
     journey_id_te = test_df["journey_id"].to_numpy()
@@ -176,7 +177,14 @@ def train_model() -> dict[str, float]:
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=MAX_EPOCHS
     )
-    loss_fn = nn.MSELoss()
+    # Align the training loss with the trip metric. trip_rmse scores the sum of
+    # rate * miles over a journey, so a rate error on a long link costs far more
+    # at trip level than the same error on a short one -- squaring that, a
+    # link's share of trip error goes as miles^2, while plain MSE treats every
+    # link alike. This reweights the loss on training rows only; the test rows,
+    # the metrics and harness.evaluate() are untouched, and no row is dropped.
+    weights = miles_tr**2
+    wt = torch.from_numpy(weights / weights.mean()).to(device).unsqueeze(1)
 
     n = xt.shape[0]
     t_train = time.time()
@@ -185,7 +193,7 @@ def train_model() -> dict[str, float]:
         for start in range(0, n, BATCH_SIZE):
             idx = order[start : start + BATCH_SIZE]
             optimizer.zero_grad()
-            loss = loss_fn(model(xt[idx]), yt[idx])
+            loss = (wt[idx] * (model(xt[idx]) - yt[idx]) ** 2).mean()
             loss.backward()
             optimizer.step()
         scheduler.step()
