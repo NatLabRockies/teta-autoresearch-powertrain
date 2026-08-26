@@ -26,6 +26,7 @@ LINK_FEATURES = [
     "speed_delta",
     "ke_delta_per_mile",
     "sinuosity",
+    "prev_grade_percent",
 ]
 
 TARGET = "energy_rate_gge"
@@ -66,6 +67,12 @@ def load_data() -> pd.DataFrame:
     # Explicit acceleration proxy. A tree splits on one axis at a time and so
     # cannot express speed_mph - prev_speed_mph from the two columns alone.
     df["speed_delta"] = df["speed_mph"] - df["prev_speed_mph"]
+    # The other half of the one-link lookback: the grade the vehicle was on as
+    # it entered this link. A flat first link is the natural fill for a trip
+    # start, matching the at-rest assumption used for prev_speed_mph.
+    df["prev_grade_percent"] = (
+        df.groupby("journey_id")["grade_percent"].shift(1).fillna(0.0)
+    )
     # Specific kinetic energy change per unit distance, (v^2 - v_prev^2)/(2d).
     # This is the physics form of speed_delta: it carries the same units as the
     # target (energy per mile), so it should map onto the target more directly
