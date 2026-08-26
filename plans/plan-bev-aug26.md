@@ -111,3 +111,19 @@ Updated after each experiment. Format:
       link but -12.3% trip, the session's key structural finding
 - [x] exp10: MAX_EPOCHS 200 -> 600 -> rmse=0.007837, trip_rmse=0.002453 (discard) — overfits
 - checkpoint: learnings.md written at exp10. Best dd8f7e7, -41.5% link / -20.3% trip vs baseline
+- [x] exp11: cosine LR anneal to zero -> rmse=0.007736, trip_rmse=0.002350 (keep) — -1.0% / -2.9%,
+      first experiment designed from the smoothness rule and it landed as predicted
+- [x] exp12: MAX_EPOCHS 200 -> 400 under the schedule -> rmse=0.007751, trip_rmse=0.002357
+      (discard) — 200 epochs is a real optimum, not an oscillation artifact
+- [x] exp13: drop speed_delta -> rmse=0.007730, trip_rmse=0.002344 (keep) — simplification win
+- [x] exp14: drop ke_delta_per_mile -> rmse=0.007739, trip_rmse=0.002353 (discard) — nonlinear
+      physics term is not redundant, unlike the linear one
+- [x] exp15: add hours_per_mile (1/speed) -> rmse=0.007729, trip_rmse=0.002344 (discard) — tie
+- [x] exp16: HIDDEN 256 -> 512 -> rmse=0.007735, trip_rmse=0.002358 (discard)
+- [x] exp17: HIDDEN 256 -> 128 -> rmse=0.007741, trip_rmse=0.002348 (discard) — 256 is optimal;
+      with exp12 and exp16 this establishes the model is information-limited
+- [x] exp18: add junction_turn_degrees -> rmse=0.007399, trip_rmse=0.002308 (keep) — -4.3% / -1.5%
+- [x] exp19: add prev_miles -> rmse=0.006954, trip_rmse=0.002266 (keep) — -6.0% / -1.8%, the
+      session's surprise; reads as a reliability weight on prev_speed_mph
+- [x] exp20: add prev_hours -> rmse=0.006952, trip_rmse=0.002266 (discard) — tie
+- checkpoint: learnings.md updated at exp20. Best 8660022, -47.9% link / -25.4% trip vs baseline

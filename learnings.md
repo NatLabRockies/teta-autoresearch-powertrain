@@ -4,16 +4,16 @@ Accumulated across sessions. Sessions so far: `bev-aug26`.
 
 ## Best known configuration
 
-As of exp10 of `bev-aug26`, commit `dd8f7e7`:
+As of exp20 of `bev-aug26`, commit `8660022`:
 
-- **Model**: MLP, 8 → 256 → 256 → 1, ReLU, Adam lr 1e-3, batch 8192, 200 epochs, MSE on a
-  standardized target, on GPU.
-- **Features**: `speed_mph`, `grade_percent`, `miles`, `prev_speed_mph`, `speed_delta`,
-  `ke_delta_per_mile`, `sinuosity`, `prev_grade_percent`
-- **Metrics**: `rmse` 0.007811, `trip_rmse` 0.002419
+- **Model**: MLP, 9 → 256 → 256 → 1, ReLU, Adam lr 1e-3 cosine-annealed to zero, batch 8192,
+  200 epochs, MSE on a standardized target, on GPU.
+- **Features**: `speed_mph`, `grade_percent`, `miles`, `prev_speed_mph`, `ke_delta_per_mile`,
+  `sinuosity`, `junction_turn_degrees`, `prev_grade_percent`, `prev_miles`
+- **Metrics**: `rmse` 0.006954, `trip_rmse` 0.002266
 - Against the original scaffold baseline (`rmse` 0.013345, `trip_rmse` 0.003037) that is
-  **−41.5% link RMSE and −20.3% trip RMSE**.
-- Runtime 145s of the 600s budget.
+  **−47.9% link RMSE and −25.4% trip RMSE**.
+- Runtime 116s of the 600s budget.
 
 ## What works
 
@@ -34,6 +34,17 @@ As of exp10 of `bev-aug26`, commit `dd8f7e7`:
    inference.
 5. **Smoothness is what trip RMSE wants.** Swapping the forest for an MLP moved link RMSE 3.3%
    but trip RMSE 12.3% (exp9). This is the session's most useful structural insight — see below.
+6. **Cosine-annealing the learning rate to zero** gave −1.0% link / −2.9% trip (exp11). It was
+   the first experiment *designed from* the smoothness rule, and the metric split came out in
+   the predicted direction and ratio. Optimizer settling is cheap trip RMSE.
+7. **The turn *between* links is real signal** — `junction_turn_degrees`, the heading change
+   from the previous link's exit into this link's entry, gave −4.3% link / −1.5% trip (exp18).
+   Note this is the opposite result from the intra-link turn angle that failed in exp7.
+8. **`prev_miles` was the surprise of the session** (−6.0% link / −1.8% trip, exp19), a bigger
+   win than the junction turn. The best reading is not "urban density" but that it tells the
+   model *how much to trust* `prev_speed_mph`: an average speed over a long previous link is a
+   poor estimate of the speed at its end, over a short one a good one. **Pair every lookback
+   value with its own reliability context.**
 
 ## What does not work
 
@@ -44,8 +55,16 @@ As of exp10 of `bev-aug26`, commit `dd8f7e7`:
   metrics by 0.05% for ~25 lines of spherical math (exp7). It is almost entirely subsumed by
   sinuosity. Links average only **3.7 vertices**, so there is very little independent shape
   signal available — treat that as a ceiling on the whole intra-link geometry family.
-- **Training the MLP longer.** 200 → 600 epochs regressed both metrics (exp10). 200 epochs is
-  at or slightly past the optimum for this configuration.
+- **Training the MLP longer.** 200 → 600 epochs regressed both metrics (exp10), and still
+  regressed at 400 epochs even after cosine annealing removed the oscillation that was the
+  suspected cause (exp12). 200 epochs is a genuine optimum. Closed direction.
+- **Network width.** 512 (exp16) and 128 (exp17) both regressed. 256 is a real optimum and
+  width is settled. Worth recording that 128 costs only +0.15% on both metrics for roughly a
+  quarter of the hidden-layer FLOPs — that is the fallback operating point if inference cost
+  ever binds in RouteE Compass.
+- **Single-variable transforms and two-input ratios.** `hours_per_mile` = 1/speed (exp15) and
+  `prev_hours` = prev_miles/prev_speed (exp20) both tied exactly. See the hand-engineering rule
+  below — these are a closed direction.
 
 ## Structural insight: why the two metrics diverge
 
@@ -65,18 +84,43 @@ each link error but whether errors **cancel or accumulate** along the journey.
 to move `rmse`, give it more information.** Since a keep requires Pareto dominance on both, the
 most productive experiments are the ones that do one without costing the other.
 
+## When hand-engineering a feature pays
+
+Three experiments pin this down precisely, and it is the most transferable rule the session
+produced:
+
+- `speed_delta` (= speed − prev_speed) was worth 9.5% **to a forest** (exp4) and became
+  removable dead weight under an MLP (exp13, a simplification win). Axis-aligned splitters
+  cannot express a difference of two columns; a linear layer forms one for free.
+- `hours_per_mile` (= 1/speed, exp15) and `prev_hours` (= prev_miles/prev_speed, exp20) each
+  tied to six decimal places.
+- `ke_delta_per_mile` (= (v² − v_prev²)/2d) is **not** removable — dropping it regressed both
+  metrics (exp14).
+
+**The rule: hand-engineer a feature only when it is hard for the network to *approximate*, not
+merely when it is nonlinear.** A one-dimensional warp of a single input, or a ratio of two
+inputs already present, is something 256 ReLU units reproduce on their own. A term that divides
+a squared difference by a *third* input is not. Note this rule is model-family dependent — the
+whole first group is valuable again the moment the model goes back to being a tree.
+
+## What is actually limiting the model
+
+Training time (exp12), width up (exp16), and width down (exp17) were all ruled out in
+succession. The model is **information-limited, not model-limited**: the same network that
+could not use more capacity immediately used more information when `junction_turn_degrees` and
+`prev_miles` arrived (exp18, exp19, −10% link RMSE between them). Architecture tuning is a
+closed direction for now; features are the frontier.
+
 ## Open hypotheses
 
-- Does `speed_delta` still earn its place under an MLP, which can form the difference itself?
-  Removing it would be a simplification win if metrics hold (see "What works" #2).
-- Network shape and size are barely explored: only 256×256 has been tried. Smaller is also
-  directly valuable — `domain.md` names inference cost as a competing objective, and the MLP is
-  ~68k FLOPs per link against a few hundred for the forest.
-- **Junction turn angle** — the heading change *between* the previous link and the current one —
-  is untested and is a genuinely different signal from the intra-link turn angle that failed in
-  exp7. Intersection turns are where the hard braking is.
+- Following the exp19 reliability insight: pair the other lookback values with reliability
+  context, or give the *current* link the same treatment.
+- Signed rather than absolute junction turn — left turns cross oncoming traffic and cost more
+  than right turns, so the sign may carry real asymmetry that `abs()` currently discards.
 - Loss shaping is untouched. MSE on the standardized target optimizes link error directly;
-  nothing yet targets the trip objective or the heavy regen tail.
+  nothing yet targets the trip objective or the heavy regen tail. Note the trip metric weights
+  a link by `miles`, which the link loss does not.
+- Depth (3+ hidden layers) is untested, though width being settled makes it a weak prospect.
 - Every result so far is deterministic (fixed `random_state`, fixed split), so sub-1% deltas are
   real and reproducible rather than noise. Do not dismiss small movements as run-to-run variance.
 
