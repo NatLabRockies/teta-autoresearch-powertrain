@@ -434,6 +434,13 @@ def train_model() -> dict[str, float]:
     residual = out_of_fold_residual(train_df, y_train)
     model.fit(train_df[LINK_FEATURES], y_train)
     sequence = sequence_predictions(df, train_df["_row"].to_numpy(), t0)
+    # Measure the journey offset against what is actually predicted. The trees'
+    # residual is the wrong thing to correct now: the sequence member gets no
+    # journey information at all, so it carries more per-trip bias than they do,
+    # and an offset fitted to their residual alone under-states the blend's.
+    residual = (1 - BLEND) * residual + BLEND * (
+        y_train - sequence[train_df["_row"].to_numpy()]
+    )
     predicted = (
         (1 - BLEND) * model.predict(test_df[LINK_FEATURES])
         + BLEND * sequence[test_df["_row"].to_numpy()]
