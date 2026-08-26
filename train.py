@@ -41,7 +41,14 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 EARTH_RADIUS_MILES = 3958.7613
 
 # --- training config ---
-HIDDEN = 256
+# Two 128-wide members rather than one 256-wide net. Two 128s cost 2*128^2
+# multiplies in the hidden-hidden layer against 256^2 for one 256, so the
+# ensemble is *half* the inference cost of the incumbent while exp26 showed
+# averaging independent fits recovers more than the ~0.15% exp17 lost by
+# narrowing. domain.md makes inference cost a competing objective, so a cheaper
+# model at equal accuracy is a win on its own terms.
+HIDDEN = 128
+N_MODELS = 2
 BATCH_SIZE = 8192
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 200
@@ -155,10 +162,43 @@ def build_model(n_features: int) -> nn.Module:
     )
 
 
+def fit_one(
+    xt: torch.Tensor, yt: torch.Tensor, xe: torch.Tensor, deadline: float
+) -> np.ndarray:
+    """Fit one member and return its standardized predictions for `xe`."""
+    model = build_model(xt.shape[1]).to(xt.device)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
+    )
+    # Anneal the step size to zero over the run. A constant rate leaves the
+    # weights oscillating around the minimum when the loop stops, and exp10
+    # showed that bumpiness costs trip_rmse far more than it costs link rmse.
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=MAX_EPOCHS
+    )
+    loss_fn = nn.MSELoss()
+
+    n = xt.shape[0]
+    for _ in range(MAX_EPOCHS):
+        order = torch.randperm(n, device=xt.device)
+        for start in range(0, n, BATCH_SIZE):
+            idx = order[start : start + BATCH_SIZE]
+            optimizer.zero_grad()
+            loss = loss_fn(model(xt[idx]), yt[idx])
+            loss.backward()
+            optimizer.step()
+        scheduler.step()
+        if time.time() > deadline:
+            break
+
+    model.eval()
+    with torch.no_grad():
+        return model(xe).squeeze(1).cpu().numpy()
+
+
 def train_model() -> dict[str, float]:
     """Train and evaluate. Returns results dict."""
     t0 = time.time()
-    torch.manual_seed(SEED)
 
     df = load_data()
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
@@ -184,37 +224,13 @@ def train_model() -> dict[str, float]:
     yt = torch.from_numpy((y_train - y_mean) / y_std).to(device).unsqueeze(1)
     xe = torch.from_numpy((x_test - x_mean) / x_std).to(device)
 
-    model = build_model(len(LINK_FEATURES)).to(device)
-    # AdamW rather than Adam: regularization is the one model-side knob never
-    # tested, and decoupled weight decay is its cleanest form here.
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=LEARNING_RATE, weight_decay=WEIGHT_DECAY
-    )
-    # Anneal the step size to zero over the run. A constant rate leaves the
-    # weights oscillating around the minimum when the loop stops, and exp10
-    # showed that bumpiness costs trip_rmse far more than it costs link rmse.
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=MAX_EPOCHS
-    )
-    loss_fn = nn.MSELoss()
-
-    n = xt.shape[0]
-    t_train = time.time()
-    for _ in range(MAX_EPOCHS):
-        order = torch.randperm(n, device=device)
-        for start in range(0, n, BATCH_SIZE):
-            idx = order[start : start + BATCH_SIZE]
-            optimizer.zero_grad()
-            loss = loss_fn(model(xt[idx]), yt[idx])
-            loss.backward()
-            optimizer.step()
-        scheduler.step()
-        if time.time() - t_train > TRAIN_SECONDS:
-            break
-
-    model.eval()
-    with torch.no_grad():
-        predicted = model(xe).squeeze(1).cpu().numpy() * y_std + y_mean
+    # The members share one deadline so the run stays inside the budget.
+    deadline = time.time() + TRAIN_SECONDS
+    members = []
+    for member in range(N_MODELS):
+        torch.manual_seed(SEED + member)
+        members.append(fit_one(xt, yt, xe, deadline))
+    predicted = np.mean(members, axis=0) * y_std + y_mean
 
     results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
 
