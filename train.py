@@ -49,6 +49,10 @@ MAX_EPOCHS = 200
 # spare for data loading and scoring.
 TRAIN_SECONDS = 400
 SEED = 52
+# Independent fits whose predictions are averaged. The exp25 diagnostic found
+# no systematic bias left in feature space, so what remains is fitting variance
+# plus irreducible noise -- and averaging attacks variance.
+N_MODELS = 3
 
 
 def _heading(coords: np.ndarray, tail: np.ndarray, head: np.ndarray) -> np.ndarray:
@@ -146,10 +150,44 @@ def build_model(n_features: int) -> nn.Module:
     )
 
 
+def fit_one(
+    xt: torch.Tensor,
+    yt: torch.Tensor,
+    xe: torch.Tensor,
+    deadline: float,
+) -> np.ndarray:
+    """Fit one network and return its standardized predictions for `xe`."""
+    model = build_model(xt.shape[1]).to(xt.device)
+    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    # Anneal the step size to zero over the run. A constant rate leaves the
+    # weights oscillating around the minimum when the loop stops, and exp10
+    # showed that bumpiness costs trip_rmse far more than it costs link rmse.
+    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
+        optimizer, T_max=MAX_EPOCHS
+    )
+    loss_fn = nn.MSELoss()
+
+    n = xt.shape[0]
+    for _ in range(MAX_EPOCHS):
+        order = torch.randperm(n, device=xt.device)
+        for start in range(0, n, BATCH_SIZE):
+            idx = order[start : start + BATCH_SIZE]
+            optimizer.zero_grad()
+            loss = loss_fn(model(xt[idx]), yt[idx])
+            loss.backward()
+            optimizer.step()
+        scheduler.step()
+        if time.time() > deadline:
+            break
+
+    model.eval()
+    with torch.no_grad():
+        return model(xe).squeeze(1).cpu().numpy()
+
+
 def train_model() -> dict[str, float]:
     """Train and evaluate. Returns results dict."""
     t0 = time.time()
-    torch.manual_seed(SEED)
 
     df = load_data()
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
@@ -175,33 +213,16 @@ def train_model() -> dict[str, float]:
     yt = torch.from_numpy((y_train - y_mean) / y_std).to(device).unsqueeze(1)
     xe = torch.from_numpy((x_test - x_mean) / x_std).to(device)
 
-    model = build_model(len(LINK_FEATURES)).to(device)
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
-    # Anneal the step size to zero over the run. A constant rate leaves the
-    # weights oscillating around the minimum when the loop stops, and exp10
-    # showed that bumpiness costs trip_rmse far more than it costs link rmse.
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=MAX_EPOCHS
-    )
-    loss_fn = nn.MSELoss()
-
-    n = xt.shape[0]
-    t_train = time.time()
-    for _ in range(MAX_EPOCHS):
-        order = torch.randperm(n, device=device)
-        for start in range(0, n, BATCH_SIZE):
-            idx = order[start : start + BATCH_SIZE]
-            optimizer.zero_grad()
-            loss = loss_fn(model(xt[idx]), yt[idx])
-            loss.backward()
-            optimizer.step()
-        scheduler.step()
-        if time.time() - t_train > TRAIN_SECONDS:
-            break
-
-    model.eval()
-    with torch.no_grad():
-        predicted = model(xe).squeeze(1).cpu().numpy() * y_std + y_mean
+    # Each member sees a different init and a different shuffle; averaging
+    # their predictions cancels the part of the error that is fitting variance
+    # rather than missing information. The whole ensemble shares one deadline
+    # so the run stays inside the harness budget however many members there are.
+    deadline = time.time() + TRAIN_SECONDS
+    members = []
+    for member in range(N_MODELS):
+        torch.manual_seed(SEED + member)
+        members.append(fit_one(xt, yt, xe, deadline))
+    predicted = np.mean(members, axis=0) * y_std + y_mean
 
     results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
 
