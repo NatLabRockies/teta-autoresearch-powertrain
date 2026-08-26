@@ -47,8 +47,8 @@ EARTH_RADIUS_MILES = 3958.7613
 # averaging independent fits recovers more than the ~0.15% exp17 lost by
 # narrowing. domain.md makes inference cost a competing objective, so a cheaper
 # model at equal accuracy is a win on its own terms.
-HIDDEN = 128
-N_MODELS = 2
+HIDDEN = 96
+N_MODELS = 3
 BATCH_SIZE = 8192
 LEARNING_RATE = 1e-3
 MAX_EPOCHS = 200
