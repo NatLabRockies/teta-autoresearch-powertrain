@@ -50,6 +50,7 @@ MAX_EPOCHS = 200
 # spare for data loading and scoring.
 TRAIN_SECONDS = 400
 WEIGHT_DECAY = 1e-4
+DROPOUT = 0.1
 SEED = 52
 
 
@@ -149,8 +150,10 @@ def build_model(n_features: int) -> nn.Module:
     return nn.Sequential(
         nn.Linear(n_features, HIDDEN),
         nn.ReLU(),
+        nn.Dropout(DROPOUT),
         nn.Linear(HIDDEN, HIDDEN),
         nn.ReLU(),
+        nn.Dropout(DROPOUT),
         nn.Linear(HIDDEN, 1),
     )
 
