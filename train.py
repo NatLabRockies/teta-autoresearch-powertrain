@@ -57,6 +57,7 @@ MODEL_FAMILY = "PhysicsMLP"
 NET_FEATURES = [
     "speed_mph",
     "prev_speed_mph",
+    "next_speed_mph",
 ]
 
 #: Consumed by the structural algebra rather than by the network.
@@ -105,17 +106,18 @@ def load_data() -> pd.DataFrame:
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """Derive the neighbour-link columns, in place.
 
-    Rows must already be ordered by journey and time. The first link of a
-    journey has no predecessor, and 0 is the physically correct value rather
-    than an imputation: a trip starts from rest.
+    Rows must already be ordered by journey and time. The links at either end
+    of a journey have no neighbour there, and 0 is the physically correct value
+    rather than an imputation: a trip starts and ends at rest.
 
     This runs on the whole frame before the split — it reads only features, no
     targets — and again inside the physics sweep, where `build_frame` gives
     every synthetic link its own single-link journey, so each one is treated as
-    a launch from rest.
+    a standing start to a full stop.
     """
     grouped = df.groupby("journey_id", sort=False)["speed_mph"]
     df["prev_speed_mph"] = grouped.shift(1).fillna(0.0)
+    df["next_speed_mph"] = grouped.shift(-1).fillna(0.0)
     return df
 
 
