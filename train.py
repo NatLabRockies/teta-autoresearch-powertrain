@@ -62,7 +62,14 @@ def train_model() -> dict[str, float]:
     model.fit(train_df[LINK_FEATURES], y_train)
     predicted = model.predict(test_df[LINK_FEATURES])
 
-    results = evaluate(y_test, predicted, journey_id=journey_id_te, miles=miles_te)
+    results = evaluate(
+        y_test,
+        predicted,
+        journey_id=journey_id_te,
+        miles=miles_te,
+        # How the physics sweep asks this model about a link it never saw.
+        predict=lambda df: model.predict(df[LINK_FEATURES]),
+    )
 
     report(
         results,

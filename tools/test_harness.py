@@ -11,11 +11,12 @@ import io
 import json
 import time
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 
 import numpy as np
 import pandas as pd
 
+import physics
 from harness import (
     evaluate,
     report,
@@ -24,6 +25,17 @@ from harness import (
     train_test_split,
     trip_rmse,
 )
+
+
+def _flat_rate(df: pd.DataFrame) -> np.ndarray:
+    """A stand-in model for the physics sweep: a constant positive rate.
+
+    These tests are about `evaluate`'s contract — which metrics come back, and
+    that the arrays stay keyword-only — not about whether a particular model is
+    physically plausible, so the stub only has to be callable and correctly
+    shaped.
+    """
+    return np.full(len(df), 0.006)
 
 
 class RmseTests(unittest.TestCase):
@@ -96,9 +108,28 @@ class EvaluateTests(unittest.TestCase):
         actual = np.array([0.10, 0.20, 0.50, 0.25])
         predicted = np.array([0.15, 0.20, 0.50, 0.20])
 
-        result = evaluate(actual, predicted, journey_id=journey_id, miles=miles)
+        # The physics report goes to stderr; swallow it so the test output
+        # stays readable.
+        with redirect_stderr(io.StringIO()):
+            result = evaluate(
+                actual,
+                predicted,
+                journey_id=journey_id,
+                miles=miles,
+                predict=_flat_rate,
+            )
 
-        self.assertEqual(set(result), {"rmse", "trip_rmse"})
+        self.assertEqual(
+            set(result),
+            {
+                "rmse",
+                "trip_rmse",
+                "physics_pass",
+                "physics_violation_rate",
+                "long_link_violation_rate",
+                "length_invariance",
+            },
+        )
         self.assertAlmostEqual(result["rmse"], rmse(actual, predicted))
         self.assertAlmostEqual(
             result["trip_rmse"], trip_rmse(actual, predicted, journey_id, miles)
@@ -108,7 +139,109 @@ class EvaluateTests(unittest.TestCase):
         """Positional misuse must fail loudly rather than silently mis-score."""
         arr = np.array([1.0, 2.0])
         with self.assertRaises(TypeError):
-            evaluate(arr, arr, arr, arr)  # type: ignore[misc]
+            evaluate(arr, arr, arr, arr, predict=_flat_rate)  # type: ignore[misc]
+
+    def test_physics_cannot_be_skipped(self) -> None:
+        """`predict` is required: a run cannot decline to be checked."""
+        arr = np.array([1.0, 2.0])
+        with self.assertRaises(TypeError):
+            evaluate(arr, arr, journey_id=arr, miles=arr)  # type: ignore[call-arg]
+
+
+class PhysicsTests(unittest.TestCase):
+    """`physics.py` is part of the fixed point, so its verdicts must not drift."""
+
+    def test_sweep_reaches_five_miles(self) -> None:
+        """The extrapolation range is the point; it has to actually be swept."""
+        self.assertEqual(physics.DISTANCES_MI.max(), 5.0)
+        self.assertTrue((physics.DISTANCES_MI > physics.TRAINING_MAX_MILES).any())
+
+    def test_road_load_model_passes(self) -> None:
+        """A physically derived model must not be flagged.
+
+        The bounds are meant to catch divergence, not to fail correct models.
+        This rate is the FASTSim road load itself, at the vehicle's own
+        efficiency, plus its baseline accessory draw — as close to the truth as
+        a closed-form model gets. If the checks flag this, they are wrong.
+        """
+
+        def road_load(df: pd.DataFrame) -> np.ndarray:
+            v = df["speed_mph"].to_numpy() * physics.MPH_TO_MS
+            grade = df["grade_percent"].to_numpy() / 100.0
+            # Force in newtons: rolling, aero, and gravity along the slope.
+            force = (
+                physics.CRR * physics.MASS_KG * physics.G
+                + 0.5 * physics.AIR_DENSITY * physics.CDA_M2 * v**2
+                + physics.MASS_KG * physics.G * grade
+            )
+            joules_per_m = np.where(
+                force > 0,
+                force / physics.ETA_DRIVE,
+                force * physics.ETA_REGEN,
+            )
+            energy_j = joules_per_m * df["miles"].to_numpy() * physics.MI_TO_M
+            energy_j += physics.PWR_AUX_BASE_WATTS * df["time_seconds"].to_numpy()
+            rate_per_mile = energy_j / df["miles"].to_numpy()
+            return rate_per_mile / physics.J_PER_GGE
+
+        report = physics.check_physics(road_load)
+        failed = [c.name for c in report.checks if c.failed]
+        self.assertEqual(failed, [], msg=report.format())
+
+    def test_constants_match_the_fastsim_vehicle_file(self) -> None:
+        """The bounds are only sharp if these are the simulator's own numbers.
+
+        Pinned against
+        `fastsim-vehicles/v1/fastsim-3/bev/chevrolet/bolt/2017/base/r1.yaml`,
+        so that an edit here has to be a deliberate one.
+        """
+        self.assertEqual(physics.MASS_KG, 1757.77)
+        self.assertEqual(physics.DRAG_COEF, 0.29)
+        self.assertEqual(physics.FRONTAL_AREA_M2, 2.845)
+        self.assertEqual(physics.CRR, 0.0073)
+        self.assertEqual(physics.WHEEL_INERTIA_KG_M2, 0.815)
+        self.assertEqual(physics.WHEEL_RADIUS_M, 0.336)
+        self.assertEqual(physics.PWR_AUX_BASE_WATTS, 250.0)
+        self.assertAlmostEqual(physics.CDA_M2, 0.82505)
+        self.assertAlmostEqual(physics.ETA_DRIVE, 0.9169287, places=6)
+
+    def test_constant_rate_model_is_caught(self) -> None:
+        """A model that ignores grade cannot be paying for the hill it climbs."""
+        report = physics.check_physics(lambda df: np.full(len(df), 0.006))
+        failed = {c.name for c in report.checks if c.failed}
+        self.assertIn("climb_floor", failed)
+        self.assertEqual(report.metrics()["physics_pass"], 0.0)
+
+    def test_length_saturation_is_caught(self) -> None:
+        """The failure mode a forest has outside its training range.
+
+        Total energy is capped past the longest link ever seen, so a 5-mile
+        link costs no more than a half-mile one.
+        """
+
+        def saturating(df: pd.DataFrame) -> np.ndarray:
+            miles = df["miles"].to_numpy()
+            capped = np.minimum(miles, physics.TRAINING_MAX_MILES)
+            # A fixed energy per link above the cap means a falling per-mile
+            # rate, which is what the model would actually report.
+            return 0.006 * capped / miles
+
+        report = physics.check_physics(saturating)
+        failed = {c.name for c in report.checks if c.failed}
+        self.assertIn("energy_grows_with_distance", failed)
+        self.assertGreater(report.metrics()["long_link_violation_rate"], 0.0)
+        self.assertGreater(report.length_invariance or 0.0, 0.0)
+
+    def test_unscorable_model_fails_every_check(self) -> None:
+        """A model that cannot answer about an arbitrary link is not usable."""
+
+        def needs_geometry(df: pd.DataFrame) -> np.ndarray:
+            return df["geometry"].to_numpy()
+
+        report = physics.check_physics(needs_geometry)
+        self.assertFalse(report.passed)
+        self.assertTrue(all(c.error is not None for c in report.checks))
+        self.assertEqual(report.metrics()["physics_pass"], 0.0)
 
 
 class TrainTestSplitTests(unittest.TestCase):

@@ -9,7 +9,10 @@ between the two files is the whole experimental control:
   is comparable to the one before it.
 - **The metrics.** `evaluate()` defines what "better" means. If the thing
   being optimized could be edited by the thing doing the optimizing, a
-  session would be free to improve its score by redefining the score.
+  session would be free to improve its score by redefining the score. This
+  covers the physical plausibility checks in `physics.py` too: they run on
+  every call, and `evaluate()` takes the model's `predict` as a required
+  argument so that a run cannot quietly decline to be checked.
 - **The report format.** `report()` is the only thing that prints the
   `metrics:` and `meta:` lines, so what lands in the results files cannot
   drift no matter what `train.py` becomes.
@@ -22,11 +25,14 @@ from __future__ import annotations
 
 import json
 import multiprocessing
+import sys
 from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 import numpy as np
 import pandas as pd
+
+import physics
 
 # ---------------------------------------------------------------------------
 # Time budget (fixed, do not modify)
@@ -98,14 +104,35 @@ def evaluate(
     *,
     journey_id: np.ndarray,
     miles: np.ndarray,
+    predict: physics.Predict,
 ) -> dict[str, float]:
-    """Evaluate a trained model and return both link-level and trip-level RMSE.
+    """Evaluate a trained model: accuracy on held-out data, plus physics.
 
     `journey_id` and `miles` must align 1:1 with `actual` / `predicted`.
+
+    `predict` is how the model answers a question about a link that is not in
+    the test set. `physics.check_physics` calls it on a synthetic sweep — every
+    combination of speed, grade and length out to 5 miles — to ask whether the
+    learned function is physically possible and whether it still behaves on
+    links ten times longer than any it was trained on. Accuracy alone cannot
+    see either failure: both live entirely outside the data.
+
+    It takes a DataFrame of synthetic links (see `physics.build_frame`) and
+    returns `energy_rate_gge` for each, in row order — for most models a
+    one-liner over whatever feature list `train.py` already defines:
+
+        predict=lambda df: model.predict(df[LINK_FEATURES])
+
+    The detailed check-by-check report goes to stderr rather than stdout, so
+    `report()` remains the only thing writing the two parse-target lines while
+    the diagnosis of a failure still lands in `run.log`.
     """
+    report = physics.check_physics(predict)
+    print(report.format(), file=sys.stderr)
     return {
         "rmse": rmse(actual, predicted),
         "trip_rmse": trip_rmse(actual, predicted, journey_id, miles),
+        **report.metrics(),
     }
 
 
