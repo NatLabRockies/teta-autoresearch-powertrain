@@ -52,17 +52,21 @@ from harness import (
 
 MODEL_FAMILY = "PhysicsMLP"
 
-#: Columns the model consumes. `grade_percent` and `miles` are consumed by the
-#: structural algebra rather than by the network; `NET_FEATURES` is what the
-#: network itself sees.
-LINK_FEATURES = [
+#: What the network itself sees. These drive the four heads, so none of them
+#: may depend on the current link's own grade or length — see `PhysicsNet`.
+NET_FEATURES = [
     "speed_mph",
+    "prev_speed_mph",
+]
+
+#: Consumed by the structural algebra rather than by the network.
+STRUCTURAL_FEATURES = [
     "grade_percent",
     "miles",
 ]
-NET_FEATURES = [
-    "speed_mph",
-]
+
+#: Everything the model consumes, which is what `report()` records.
+LINK_FEATURES = NET_FEATURES + STRUCTURAL_FEATURES
 
 TARGET = "energy_rate_gge"
 
@@ -96,6 +100,23 @@ def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
     # sort by journey and time
     return df.sort_values(["journey_id", "link_start_time"])
+
+
+def add_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Derive the neighbour-link columns, in place.
+
+    Rows must already be ordered by journey and time. The first link of a
+    journey has no predecessor, and 0 is the physically correct value rather
+    than an imputation: a trip starts from rest.
+
+    This runs on the whole frame before the split — it reads only features, no
+    targets — and again inside the physics sweep, where `build_frame` gives
+    every synthetic link its own single-link journey, so each one is treated as
+    a launch from rest.
+    """
+    grouped = df.groupby("journey_id", sort=False)["speed_mph"]
+    df["prev_speed_mph"] = grouped.shift(1).fillna(0.0)
+    return df
 
 
 # ---------------------------------------------------------------------------
@@ -218,7 +239,7 @@ def train_model() -> dict[str, float]:
     torch.manual_seed(SEED)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    df = load_data()
+    df = add_features(load_data())
     train_df, test_df = train_test_split(df, test_size=0.2, random_seed=42)
 
     y_train = train_df[TARGET].to_numpy(dtype=np.float32)
@@ -261,12 +282,20 @@ def train_model() -> dict[str, float]:
     model.eval()
 
     @torch.no_grad()
-    def predict(frame: pd.DataFrame) -> np.ndarray:
+    def score(frame: pd.DataFrame) -> np.ndarray:
+        """Predict for a frame that already carries the derived columns."""
         x, speed, grade, miles = _columns(frame, device)
         out = model((x - mean) / std, speed, grade, miles)
         return out.cpu().numpy().astype(np.float64)
 
-    predicted = predict(test_df)
+    def predict(frame: pd.DataFrame) -> np.ndarray:
+        """Predict for a raw frame — the physics sweep's entry point."""
+        return score(add_features(frame))
+
+    # The test rows carry neighbours from the *unsplit* frame, so they must not
+    # be re-derived here: their neighbours are training links, not the adjacent
+    # test rows.
+    predicted = score(test_df)
 
     results = evaluate(
         y_test,
