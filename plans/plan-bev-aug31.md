@@ -132,3 +132,4 @@ Updated after each experiment. Format:
 
 - [x] exp0: baseline scaffold RandomForest -> rmse=0.013345, trip_rmse=0.003037, physics_pass=0.0 (keep, 6/9 checks fail)
 - [x] exp1: structured physics parametrization, 4 bounded heads -> rmse=0.013397, trip_rmse=0.003060, physics_pass=1.0 (keep, first physically legal model)
+- [x] exp2: add prev_speed_mph -> rmse=0.010816, trip_rmse=0.003008, physics_pass=1.0 (keep, -19.3% rmse)
