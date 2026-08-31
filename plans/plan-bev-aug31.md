@@ -129,3 +129,6 @@ Operator brief for this session, recorded here as the only durable copy:
 
 Updated after each experiment. Format:
 `- [x] expN: description -> <metric>=<value>, <metric>=<value> (status)`
+
+- [x] exp0: baseline scaffold RandomForest -> rmse=0.013345, trip_rmse=0.003037, physics_pass=0.0 (keep, 6/9 checks fail)
+- [x] exp1: structured physics parametrization, 4 bounded heads -> rmse=0.013397, trip_rmse=0.003060, physics_pass=1.0 (keep, first physically legal model)
