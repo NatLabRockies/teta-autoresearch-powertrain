@@ -1,1 +1,2 @@
 commit	model_family	rmse	trip_rmse	physics_pass	physics_violation_rate	long_link_violation_rate	length_invariance	status	features	description
+eeb388b	RandomForest	0.013345	0.003037	0.000000	0.098493	0.095871	8.826788	keep	speed_mph,grade_percent,miles	baseline (scaffold RandomForest, 3 features)
