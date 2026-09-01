@@ -103,7 +103,7 @@ HIDDEN = 128
 EPOCHS = 300
 BATCH = 8192
 LR = 1e-3
-WEIGHT_DECAY = 1e-4
+WEIGHT_DECAY = 0.0
 SEED = 0
 
 #: Safety net only. The epoch count is chosen to finish inside the harness
