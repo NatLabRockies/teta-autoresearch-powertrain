@@ -170,3 +170,4 @@ Updated after each experiment. Format:
 - [x] exp37: corner-gated regen channel -> rmse=0.005900, trip_rmse=0.002087 (discard, 1.8:1 split)
 - [x] exp38: removal screen, drop next2_speed_mph -> rmse=0.005987, trip_rmse=0.002102 (discard, still earns place)
 - [x] exp39: add prev2_grade_percent -> rmse=0.005949, trip_rmse=0.002094 (discard, both worse)
+- [x] exp40: control re-run of incumbent -> bit-identical metrics (keep, variance is zero at matched epochs)
