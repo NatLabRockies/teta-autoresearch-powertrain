@@ -60,10 +60,21 @@ NET_FEATURES = [
     "next_speed_mph",
 ]
 
-#: Consumed by the structural algebra rather than by the network.
+#: Consumed by the structural algebra rather than by the network. The
+#: neighbour speeds appear here as well as in `NET_FEATURES`: the structure
+#: needs them in physical units to size the kinetic energy a link releases.
 STRUCTURAL_FEATURES = [
     "grade_percent",
     "miles",
+]
+
+#: The raw, unstandardized columns `PhysicsNet.forward` reads, in order.
+RAW_COLUMNS = [
+    "speed_mph",
+    "grade_percent",
+    "miles",
+    "prev_speed_mph",
+    "next_speed_mph",
 ]
 
 #: Everything the model consumes, which is what `report()` records.
@@ -147,16 +158,19 @@ def _accessory_per_mile(speed_mph: Tensor) -> Tensor:
     return physics.ACCESSORY_WATTS * (physics.MI_TO_M / v) / physics.J_PER_GGE
 
 
+def _kinetic_gge(speed_mph: Tensor) -> Tensor:
+    """Kinetic energy at a given speed, in GGE.
+
+    Effective mass, not curb mass — spinning the wheels up is work the
+    simulator bills, and `physics.py` sizes its bounds the same way.
+    """
+    v = speed_mph * physics.MPH_TO_MS
+    return 0.5 * physics.EFFECTIVE_MASS_KG * v**2 / physics.J_PER_GGE
+
+
 def _transient_gge(speed_mph: Tensor) -> Tensor:
     """The acceleration energy a link average may hide, in GGE."""
-    v = speed_mph * physics.MPH_TO_MS
-    return (
-        physics.TRANSIENT_KINETIC_MULTIPLE
-        * 0.5
-        * physics.EFFECTIVE_MASS_KG
-        * v**2
-        / physics.J_PER_GGE
-    )
+    return physics.TRANSIENT_KINETIC_MULTIPLE * _kinetic_gge(speed_mph)
 
 
 class PhysicsNet(nn.Module):
@@ -189,27 +203,24 @@ class PhysicsNet(nn.Module):
             nn.Linear(HIDDEN, HIDDEN),
             nn.ReLU(),
         )
-        self.head = nn.Linear(HIDDEN, 4)
+        self.head = nn.Linear(HIDDEN, 5)
         with torch.no_grad():
             self.head.weight.mul_(0.1)
             # Start the transient head near zero: `T / d` is divided by a link
             # length as small as 0.002 mi, so a mid-range initialization would
             # start the fit orders of magnitude above the target.
-            self.head.bias.copy_(torch.tensor([0.0, 0.0, 0.0, -3.0]))
+            self.head.bias.copy_(torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0]))
 
-    def forward(
-        self, x: Tensor, speed_mph: Tensor, grade_percent: Tensor, miles: Tensor
-    ) -> Tensor:
+    def forward(self, x: Tensor, raw: Tensor) -> Tensor:
         # The heads sit exactly on their bounds when a sigmoid saturates, and
         # `physics.py` compares against float64 constants with a 1e-12
         # tolerance. In float32 the climb slope lands a part in 1e7 below
         # `K_POT` and the climb floor reads as violated by 4e-9 GGE. The
         # network stays in float32; the structural algebra is float64.
-        raw = self.head(self.body(x)).double()
-        a, b, c, t = raw.unbind(dim=-1)
-        speed_mph = speed_mph.double()
-        grade_percent = grade_percent.double()
-        miles = miles.double()
+        a, b, c, t, u = self.head(self.body(x)).double().unbind(dim=-1)
+        speed_mph, grade_percent, miles, prev_mph, next_mph = raw.double().unbind(
+            dim=-1
+        )
 
         resistance = _road_load_per_mile(speed_mph)
         accessory = _accessory_per_mile(speed_mph)
@@ -236,22 +247,33 @@ class PhysicsNet(nn.Module):
             K_POT * up * (1.0 / ETA - 1.0) + slack
         )
         descend = ETA * K_POT * torch.sigmoid(c)
-        fixed = (transient / ETA) * torch.sigmoid(t)
+
+        # The fixed per-link cost, in two signed halves. `T+` is the
+        # acceleration energy a link average hides; `T-` is the kinetic energy
+        # the link gives back when it ends slower than it started, which is how
+        # a flat link can come out negative at all.
+        #
+        # `T-` is gated by the energy actually released, so it vanishes at
+        # steady state — which is what the physics sweep is, since every
+        # synthetic link is its own journey and both neighbour speeds are equal
+        # there. That is what keeps `flat_energy_positive` true by construction
+        # while the model is still free to predict regen on real links. Its size
+        # is capped by `eta * transient`, exactly the `absolute_floor` bound.
+        released = torch.clamp(
+            _kinetic_gge(prev_mph) - _kinetic_gge(next_mph), min=0.0
+        )
+        fixed = (transient / ETA) * torch.sigmoid(t) - torch.sigmoid(u) * torch.minimum(
+            released, ETA * transient
+        )
 
         return rate_flat + climb - descend * down + fixed / miles
 
 
-def _columns(df: pd.DataFrame, device: torch.device) -> tuple[Tensor, ...]:
-    """Network inputs and the three structural columns, as GPU tensors."""
-    def column(name: str) -> Tensor:
-        return torch.tensor(
-            df[name].to_numpy(dtype=np.float32), device=device, dtype=torch.float32
-        )
-
-    x = torch.tensor(
-        df[NET_FEATURES].to_numpy(dtype=np.float32), device=device
-    )
-    return x, column("speed_mph"), column("grade_percent"), column("miles")
+def _columns(df: pd.DataFrame, device: torch.device) -> tuple[Tensor, Tensor]:
+    """Network inputs and the raw structural columns, as GPU tensors."""
+    x = torch.tensor(df[NET_FEATURES].to_numpy(dtype=np.float32), device=device)
+    raw = torch.tensor(df[RAW_COLUMNS].to_numpy(dtype=np.float32), device=device)
+    return x, raw
 
 
 def train_model() -> dict[str, float]:
@@ -268,7 +290,7 @@ def train_model() -> dict[str, float]:
     journey_id_te = test_df["journey_id"].to_numpy()
     miles_te = test_df["miles"].to_numpy(dtype=np.float32)
 
-    x_tr, speed_tr, grade_tr, miles_tr = _columns(train_df, device)
+    x_tr, raw_tr = _columns(train_df, device)
     y_tr = torch.as_tensor(y_train, device=device)
 
     # Standardize the network inputs only; the structural columns are consumed
@@ -291,7 +313,7 @@ def train_model() -> dict[str, float]:
         order = torch.randperm(n, device=device, generator=generator)
         for start in range(0, n, BATCH):
             idx = order[start : start + BATCH]
-            pred = model(x_tr[idx], speed_tr[idx], grade_tr[idx], miles_tr[idx])
+            pred = model(x_tr[idx], raw_tr[idx])
             loss = torch.mean(((pred - y_tr[idx]) / y_scale) ** 2)
             optimizer.zero_grad(set_to_none=True)
             loss.backward()
@@ -305,8 +327,8 @@ def train_model() -> dict[str, float]:
     @torch.no_grad()
     def score(frame: pd.DataFrame) -> np.ndarray:
         """Predict for a frame that already carries the derived columns."""
-        x, speed, grade, miles = _columns(frame, device)
-        out = model((x - mean) / std, speed, grade, miles)
+        x, raw = _columns(frame, device)
+        out = model((x - mean) / std, raw)
         return out.cpu().numpy().astype(np.float64)
 
     def predict(frame: pd.DataFrame) -> np.ndarray:
