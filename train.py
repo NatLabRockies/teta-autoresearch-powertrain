@@ -96,6 +96,11 @@ ETA = physics.ETA_DRIVE
 MIN_MS = 1e-3
 """Floor on speed in m/s, so the accessory term cannot divide by zero."""
 
+GRADE_SLACK_REF = 1.0
+"""Grade, in percent, at which the climb term may spend the full flat-rate
+headroom. Below it the allowance is scaled down linearly to zero, which is what
+keeps level ground exactly level."""
+
 
 def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
@@ -163,7 +168,7 @@ class PhysicsNet(nn.Module):
     |------|------------------------------------------|-----------------------------|
     | `A`  | `[res/2, res/eta + acc]`                 | flat positivity, distance   |
     |      |                                          | growth, the ceiling         |
-    | `B`  | `[k_pot, k_pot/eta]`                     | the climb floor, the ceiling|
+    | `B`  | `[k_pot, k_pot/eta + slack/g]`           | the climb floor, the ceiling|
     | `C`  | `[0, eta*k_pot]`                         | grade monotonicity, round   |
     |      |                                          | trips, regen, the floor     |
     | `T`  | `[0, transient/eta]`                     | the ceiling                 |
@@ -213,13 +218,27 @@ class PhysicsNet(nn.Module):
         floor = 0.5 * resistance
         ceiling = resistance / ETA + accessory
         rate_flat = floor + (ceiling - floor) * torch.sigmoid(a)
-        climb = K_POT * (1.0 + (1.0 / ETA - 1.0) * torch.sigmoid(b))
-        descend = ETA * K_POT * torch.sigmoid(c)
-        fixed = (transient / ETA) * torch.sigmoid(t)
 
         up = torch.clamp(grade_percent, min=0.0)
         down = torch.clamp(-grade_percent, min=0.0)
-        return rate_flat + climb * up - descend * down + fixed / miles
+
+        # The climb term is allowed to spend whatever ceiling headroom the flat
+        # rate left unused, so the marginal cost of grade is not pinned to peak
+        # drivetrain efficiency. A real climb runs the motor away from its peak,
+        # so `mgh / ETA` is a floor on what it costs rather than a ceiling; the
+        # `absolute_ceiling` check has room for that because it also allows a
+        # transient and an accessory term the flat rate is not using.
+        #
+        # Gated by grade so the headroom vanishes on level ground, where there
+        # is no climb to spend it on.
+        slack = (ceiling - rate_flat) * torch.clamp(up / GRADE_SLACK_REF, max=1.0)
+        climb = K_POT * up + torch.sigmoid(b) * (
+            K_POT * up * (1.0 / ETA - 1.0) + slack
+        )
+        descend = ETA * K_POT * torch.sigmoid(c)
+        fixed = (transient / ETA) * torch.sigmoid(t)
+
+        return rate_flat + climb - descend * down + fixed / miles
 
 
 def _columns(df: pd.DataFrame, device: torch.device) -> tuple[Tensor, ...]:
