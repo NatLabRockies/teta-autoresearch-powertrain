@@ -66,6 +66,7 @@ NET_FEATURES = [
     "next2_speed_mph",
     "prev_grade_percent",
     "entry_kinetic_gge",
+    "exit_kinetic_gge",
     "sinuosity",
     "junction_turn_degrees",
     "prev_sinuosity",
@@ -219,6 +220,10 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["entry_kinetic_gge"] = _kinetic_gge_numpy(
         df["speed_mph"].to_numpy()
     ) - _kinetic_gge_numpy(df["prev_speed_mph"].to_numpy())
+    # The exit half: what the link hands on rather than what it was handed.
+    df["exit_kinetic_gge"] = _kinetic_gge_numpy(
+        df["next_speed_mph"].to_numpy()
+    ) - _kinetic_gge_numpy(df["speed_mph"].to_numpy())
     # One WKB decode for the whole frame, shared by every geometry feature:
     # decoding 1.6M linestrings costs ~20s, and doing it twice was enough to
     # push the run into its training-time cap.
