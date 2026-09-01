@@ -158,3 +158,4 @@ Updated after each experiment. Format:
 - [x] exp25: narrow the release gate -> rmse=0.006240, trip_rmse=0.002162 (keep, guarantee restored)
 - [x] exp26: re-test next_junction_turn_degrees -> rmse=0.006216, trip_rmse=0.002157 (keep, -0.38%/-0.23%)
 - [x] exp27: saturating descent shape -> rmse=0.006215, trip_rmse=0.002160 (discard, tie/+0.14%)
+- [x] exp28: removal screen, drop entry_kinetic_gge -> rmse=0.006222, trip_rmse=0.002167 (discard, still earns place)
