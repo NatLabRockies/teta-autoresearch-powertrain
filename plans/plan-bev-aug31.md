@@ -136,3 +136,4 @@ Updated after each experiment. Format:
 - [x] exp3: add next_speed_mph -> rmse=0.010305, trip_rmse=0.002871, physics_pass=1.0 (keep, -4.7%/-4.6%)
 - [x] exp4: add prev_miles -> rmse=0.009984, trip_rmse=0.002880 (discard, trip_rmse +0.3%)
 - [x] exp5: add prev2_speed_mph -> rmse=0.010262, trip_rmse=0.002873 (discard, near-tie)
+- [x] exp6: climb term spends ceiling headroom -> rmse=0.010287, trip_rmse=0.002867 (keep, -0.17%/-0.14%)
