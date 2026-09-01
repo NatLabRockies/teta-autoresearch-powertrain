@@ -9,3 +9,4 @@ db730bd	PhysicsMLP	0.010287	0.002867	1.000000	0.000000	0.000000	2.244151	keep	sp
 fef4f62	PhysicsMLP	0.007597	0.002439	1.000000	0.000000	0.000000	1.191992	keep	speed_mph,prev_speed_mph,next_speed_mph,grade_percent,miles	signed transient: let a link give back the kinetic energy it releases
 ab9d0b6	PhysicsMLP	0.006932	0.002315	1.000000	0.000000	0.000000	0.986948	keep	speed_mph,prev_speed_mph,next_speed_mph,prev_miles,grade_percent,miles	re-test prev_miles under the signed-transient structure
 8996a55	PhysicsMLP	0.006757	0.002287	1.000000	0.000000	0.000000	0.458303	keep	speed_mph,prev_speed_mph,next_speed_mph,prev_miles,next_miles,grade_percent,miles	add next_miles (the exit-side reliability context)
+6303efb	PhysicsMLP	0.006757	0.002277	1.000000	0.000000	0.000000	0.608788	keep	speed_mph,prev_speed_mph,next_speed_mph,prev_miles,next_miles,grade_percent,miles	size the kinetic release from the link own peak, not just its entry
