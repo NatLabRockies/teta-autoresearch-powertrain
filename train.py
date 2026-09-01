@@ -39,6 +39,7 @@ import time
 
 import numpy as np
 import pandas as pd
+import shapely
 import torch
 from torch import Tensor, nn
 
@@ -64,6 +65,7 @@ NET_FEATURES = [
     "next2_speed_mph",
     "prev_grade_percent",
     "entry_kinetic_gge",
+    "sinuosity",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -110,6 +112,12 @@ K_POT = physics.MASS_KG * physics.G * physics.MI_TO_M / 100.0 / physics.J_PER_GG
 
 ETA = physics.ETA_DRIVE
 
+EARTH_RADIUS_M = 6371000.0
+"""Mean Earth radius, m — for the straight-line distance between endpoints."""
+
+SINUOSITY_CAP = 10.0
+"""Ceiling on the winding ratio, for links whose endpoints nearly coincide."""
+
 MIN_MS = 1e-3
 """Floor on speed in m/s, so the accessory term cannot divide by zero."""
 
@@ -123,6 +131,31 @@ def load_data() -> pd.DataFrame:
     df = pd.read_parquet(DATA_PATH)
     # sort by journey and time
     return df.sort_values(["journey_id", "link_start_time"])
+
+
+def _sinuosity(df: pd.DataFrame) -> np.ndarray:
+    """Path length over straight-line endpoint distance, >= 1 for a real road.
+
+    A winding link costs more than its length suggests: the vehicle corners,
+    and cornering is speed the average hides. The geometry column is not
+    physically determined by speed, grade and length, so `physics.build_frame`
+    has no column for it — `physics.py` says a model consuming one must supply
+    its own value inside `predict`, and 1.0 is the right one: a synthetic link
+    is straight.
+    """
+    if "geometry" not in df.columns:
+        return np.ones(len(df))
+    geometry = shapely.from_wkb(df["geometry"].to_numpy())
+    start = shapely.get_point(geometry, 0)
+    end = shapely.get_point(geometry, -1)
+    lat = np.radians(0.5 * (shapely.get_y(start) + shapely.get_y(end)))
+    dx = np.radians(shapely.get_x(end) - shapely.get_x(start)) * np.cos(lat)
+    dy = np.radians(shapely.get_y(end) - shapely.get_y(start))
+    chord_m = EARTH_RADIUS_M * np.hypot(dx, dy)
+    length_m = df["miles"].to_numpy() * physics.MI_TO_M
+    # A link whose endpoints coincide is a loop, not an infinitely winding
+    # road; cap it rather than letting the ratio run away.
+    return np.clip(length_m / np.maximum(chord_m, 1e-6), 1.0, SINUOSITY_CAP)
 
 
 def _kinetic_gge_numpy(speed_mph: np.ndarray) -> np.ndarray:
@@ -164,6 +197,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["entry_kinetic_gge"] = _kinetic_gge_numpy(
         df["speed_mph"].to_numpy()
     ) - _kinetic_gge_numpy(df["prev_speed_mph"].to_numpy())
+    df["sinuosity"] = _sinuosity(df)
     length = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = length.shift(1).fillna(0.0)
     df["next_miles"] = length.shift(-1).fillna(0.0)
