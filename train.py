@@ -91,7 +91,7 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 
 # --- model config ---
 HIDDEN = 128
-EPOCHS = 150
+EPOCHS = 300
 BATCH = 8192
 LR = 1e-3
 WEIGHT_DECAY = 1e-4
