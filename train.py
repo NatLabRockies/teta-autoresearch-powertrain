@@ -176,6 +176,7 @@ def _bearings(geometry: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     from its endpoints, so a link that bends in the middle still reports the
     direction it actually joins its neighbours at.
     """
+
     def bearing(tail: int, head: int) -> np.ndarray:
         a, b = shapely.get_point(geometry, tail), shapely.get_point(geometry, head)
         lat = np.radians(0.5 * (shapely.get_y(a) + shapely.get_y(b)))
@@ -344,9 +345,7 @@ class PhysicsNet(nn.Module):
             # Start the transient head near zero: `T / d` is divided by a link
             # length as small as 0.002 mi, so a mid-range initialization would
             # start the fit orders of magnitude above the target.
-            self.head.bias.copy_(
-                torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0])
-            )
+            self.head.bias.copy_(torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0]))
 
     def forward(self, x: Tensor, raw: Tensor) -> Tensor:
         # The heads sit exactly on their bounds when a sigmoid saturates, and
@@ -380,9 +379,7 @@ class PhysicsNet(nn.Module):
         # Gated by grade so the headroom vanishes on level ground, where there
         # is no climb to spend it on.
         slack = (ceiling - rate_flat) * torch.clamp(up / GRADE_SLACK_REF, max=1.0)
-        climb = K_POT * up + torch.sigmoid(b) * (
-            K_POT * up * (1.0 / ETA - 1.0) + slack
-        )
+        climb = K_POT * up + torch.sigmoid(b) * (K_POT * up * (1.0 / ETA - 1.0) + slack)
         descend = ETA * K_POT * torch.sigmoid(c)
 
         # The fixed per-link cost, in two signed halves. `T+` is the
@@ -396,9 +393,7 @@ class PhysicsNet(nn.Module):
         # there. That is what keeps `flat_energy_positive` true by construction
         # while the model is still free to predict regen on real links. Its size
         # is capped by `eta * transient`, exactly the `absolute_floor` bound.
-        released = torch.clamp(
-            _kinetic_gge(prev_mph) - _kinetic_gge(next_mph), min=0.0
-        )
+        released = torch.clamp(_kinetic_gge(prev_mph) - _kinetic_gge(next_mph), min=0.0)
         # The transient may grow with link length. A half-mile link at 30 mph
         # average plausibly contains more acceleration events than a hundred-
         # foot one at the same average, and a fixed T says they contain the
@@ -411,9 +406,9 @@ class PhysicsNet(nn.Module):
         # so the relaxation only adds freedom.
         scale = LENGTH_SCALE_MI * nn.functional.softplus(lam)
         growth = torch.sigmoid(w) * torch.exp(-miles / scale)
-        fixed = (transient / ETA) * torch.sigmoid(t) * (
-            1.0 - growth
-        ) - torch.sigmoid(u) * torch.minimum(released, ETA * transient)
+        fixed = (transient / ETA) * torch.sigmoid(t) * (1.0 - growth) - torch.sigmoid(
+            u
+        ) * torch.minimum(released, ETA * transient)
 
         return rate_flat + climb - descend * down + fixed / miles
 
@@ -451,9 +446,7 @@ def train_model() -> dict[str, float]:
     y_scale = float(y_tr.std())
 
     model = PhysicsNet(len(NET_FEATURES)).to(device)
-    optimizer = torch.optim.AdamW(
-        model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY
-    )
+    optimizer = torch.optim.AdamW(model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY)
     schedule = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
     n = x_tr.shape[0]
