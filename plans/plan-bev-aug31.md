@@ -179,7 +179,7 @@ Updated after each experiment. Format:
 
 ## Session outcome
 
-45 experiments, 13 keeps, ended after exp45 rather than running to the 50-experiment limit: the
+45 experiments, 23 keeps (20 substantive), ended after exp45 rather than running to the 50-experiment limit: the
 last eleven experiments produced no accuracy keep, and the remaining budget was worth more spent
 on `learnings.md` than on further probes of a closed frontier.
 

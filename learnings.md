@@ -1,6 +1,6 @@
 # Learnings
 
-Accumulated across sessions. Sessions so far: `bev-aug31` (45 experiments, 13 keeps).
+Accumulated across sessions. Sessions so far: `bev-aug31` (45 experiments, 23 keeps — 20 of them substantive, the others being the exp0 baseline, the exp40 control and the exp45 reformat).
 
 This tree differs from `../unguided` and `../domain-guided` in two ways, and both change what is
 worth trying:
