@@ -67,6 +67,7 @@ NET_FEATURES = [
     "entry_kinetic_gge",
     "sinuosity",
     "junction_turn_degrees",
+    "prev_sinuosity",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -236,6 +237,11 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
         df.drop(columns=["_exit_bearing"], inplace=True)
     else:
         df["junction_turn_degrees"] = np.zeros(len(df))
+    # The shape of the road behind: a winding approach means the vehicle
+    # arrives having already given up speed to corner.
+    df["prev_sinuosity"] = (
+        df.groupby("journey_id", sort=False)["sinuosity"].shift(1).fillna(1.0)
+    )
     length = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = length.shift(1).fillna(0.0)
     df["next_miles"] = length.shift(-1).fillna(0.0)
