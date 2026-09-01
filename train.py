@@ -63,6 +63,7 @@ NET_FEATURES = [
     "prev2_speed_mph",
     "next2_speed_mph",
     "prev_grade_percent",
+    "next_grade_percent",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -151,6 +152,7 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # the average speeds do not show.
     grade = df.groupby("journey_id", sort=False)["grade_percent"]
     df["prev_grade_percent"] = grade.shift(1).fillna(0.0)
+    df["next_grade_percent"] = grade.shift(-1).fillna(0.0)
     length = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = length.shift(1).fillna(0.0)
     df["next_miles"] = length.shift(-1).fillna(0.0)
