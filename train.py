@@ -97,7 +97,7 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 HIDDEN = 128
 EPOCHS = 300
 BATCH = 8192
-LR = 2e-3
+LR = 1e-3
 WEIGHT_DECAY = 1e-4
 SEED = 0
 
