@@ -65,7 +65,6 @@ NET_FEATURES = [
     "prev2_speed_mph",
     "next2_speed_mph",
     "prev_grade_percent",
-    "entry_kinetic_gge",
     "sinuosity",
     "junction_turn_degrees",
     "prev_sinuosity",
@@ -180,12 +179,6 @@ def _bearings(geometry: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return bearing(0, 1), bearing(-2, -1)
 
 
-def _kinetic_gge_numpy(speed_mph: np.ndarray) -> np.ndarray:
-    """`_kinetic_gge` for feature construction, before anything is on the GPU."""
-    v = speed_mph * physics.MPH_TO_MS
-    return 0.5 * physics.EFFECTIVE_MASS_KG * v**2 / physics.J_PER_GGE
-
-
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """Derive the neighbour-link columns, in place.
 
@@ -213,12 +206,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # the average speeds do not show.
     grade = df.groupby("journey_id", sort=False)["grade_percent"]
     df["prev_grade_percent"] = grade.shift(1).fillna(0.0)
-    # The signed kinetic work of entering the link, in the target's own units.
-    # The structure already divides a fixed energy by distance; what it cannot
-    # do is square a speed, so hand the difference of squares over directly.
-    df["entry_kinetic_gge"] = _kinetic_gge_numpy(
-        df["speed_mph"].to_numpy()
-    ) - _kinetic_gge_numpy(df["prev_speed_mph"].to_numpy())
     # One WKB decode for the whole frame, shared by every geometry feature:
     # decoding 1.6M linestrings costs ~20s, and doing it twice was enough to
     # push the run into its training-time cap.
