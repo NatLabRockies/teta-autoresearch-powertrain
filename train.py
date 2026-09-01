@@ -335,14 +335,16 @@ class PhysicsNet(nn.Module):
             nn.Linear(HIDDEN, HIDDEN),
             nn.ReLU(),
         )
-        self.head = nn.Linear(HIDDEN, 7)
+        self.head = nn.Linear(HIDDEN, 9)
         with torch.no_grad():
             self.head.weight.mul_(0.1)
             # Start the transient head near zero: `T / d` is divided by a link
             # length as small as 0.002 mi, so a mid-range initialization would
             # start the fit orders of magnitude above the target.
             self.head.bias.copy_(
-                torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0])
+                torch.tensor(
+                    [0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0, -3.0, 0.0]
+                )
             )
 
     def forward(self, x: Tensor, raw: Tensor) -> Tensor:
@@ -351,7 +353,8 @@ class PhysicsNet(nn.Module):
         # tolerance. In float32 the climb slope lands a part in 1e7 below
         # `K_POT` and the climb floor reads as violated by 4e-9 GGE. The
         # network stays in float32; the structural algebra is float64.
-        a, b, c, t, u, w, lam = self.head(self.body(x)).double().unbind(dim=-1)
+        heads = self.head(self.body(x)).double()
+        a, b, c, t, u, w, lam, w_a, lam_a = heads.unbind(dim=-1)
         speed_mph, grade_percent, miles, prev_mph, next_mph = raw.double().unbind(
             dim=-1
         )
@@ -362,7 +365,14 @@ class PhysicsNet(nn.Module):
 
         floor = 0.5 * resistance
         ceiling = resistance / ETA + accessory
-        rate_flat = floor + (ceiling - floor) * torch.sigmoid(a)
+        # The road-load rate may grow with length on the same argument as the
+        # transient below: `energy_grows_with_distance` is satisfied by
+        # `A >= res/2` alone, so any A that is non-decreasing in length is
+        # legal. Whether it *should* grow is left to the data — at
+        # `growth_a = 0` this is the length-independent rate it replaces.
+        scale_a = LENGTH_SCALE_MI * nn.functional.softplus(lam_a)
+        growth_a = torch.sigmoid(w_a) * torch.exp(-miles / scale_a)
+        rate_flat = floor + (ceiling - floor) * torch.sigmoid(a) * (1.0 - growth_a)
 
         up = torch.clamp(grade_percent, min=0.0)
         down = torch.clamp(-grade_percent, min=0.0)
