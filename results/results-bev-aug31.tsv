@@ -7,3 +7,4 @@ c9b5a10	PhysicsMLP	0.009984	0.002880	1.000000	0.000000	0.000000	0.585244	discard
 9aa25ee	PhysicsMLP	0.010262	0.002873	1.000000	0.000000	0.000000	0.972822	discard	speed_mph,prev_speed_mph,next_speed_mph,prev2_speed_mph,grade_percent,miles	add prev2_speed_mph (rmse -0.4%, trip_rmse +0.07%)
 db730bd	PhysicsMLP	0.010287	0.002867	1.000000	0.000000	0.000000	2.244151	keep	speed_mph,prev_speed_mph,next_speed_mph,grade_percent,miles	let the climb term spend the flat rate unused ceiling headroom
 fef4f62	PhysicsMLP	0.007597	0.002439	1.000000	0.000000	0.000000	1.191992	keep	speed_mph,prev_speed_mph,next_speed_mph,grade_percent,miles	signed transient: let a link give back the kinetic energy it releases
+ab9d0b6	PhysicsMLP	0.006932	0.002315	1.000000	0.000000	0.000000	0.986948	keep	speed_mph,prev_speed_mph,next_speed_mph,prev_miles,grade_percent,miles	re-test prev_miles under the signed-transient structure
