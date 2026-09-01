@@ -90,7 +90,7 @@ TARGET = "energy_rate_gge"
 DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 
 # --- model config ---
-HIDDEN = 256
+HIDDEN = 128
 EPOCHS = 300
 BATCH = 8192
 LR = 1e-3

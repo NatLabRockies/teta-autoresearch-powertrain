@@ -145,3 +145,4 @@ Updated after each experiment. Format:
 - [x] exp12: add next2_speed_mph -> rmse=0.006488, trip_rmse=0.002238 (keep, -1.4%/-0.9%)
 - [x] exp13: add prev_grade_percent -> rmse=0.006478, trip_rmse=0.002218 (keep, -0.15%/-0.89%)
 - [x] exp14: add next_grade_percent -> rmse=0.006480, trip_rmse=0.002218 (discard, tie)
+- [x] exp15: widen 128 -> 256 -> rmse=0.006530, trip_rmse=0.002204 (discard, metrics split)
