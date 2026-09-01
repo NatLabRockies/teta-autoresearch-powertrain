@@ -139,3 +139,4 @@ Updated after each experiment. Format:
 - [x] exp6: climb term spends ceiling headroom -> rmse=0.010287, trip_rmse=0.002867 (keep, -0.17%/-0.14%)
 - [x] exp7: signed transient (released kinetic energy) -> rmse=0.007597, trip_rmse=0.002439 (keep, -26.2%/-14.9%)
 - [x] exp8: re-test prev_miles -> rmse=0.006932, trip_rmse=0.002315 (keep, -8.8%/-5.1%)
+- [x] exp9: add next_miles -> rmse=0.006757, trip_rmse=0.002287 (keep, -2.5%/-1.2%)
