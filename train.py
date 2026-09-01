@@ -35,7 +35,6 @@ which is where the physics puts them anyway.
 
 from __future__ import annotations
 
-import sys
 import time
 
 import numpy as np
@@ -69,7 +68,6 @@ NET_FEATURES = [
     "sinuosity",
     "junction_turn_degrees",
     "prev_sinuosity",
-    "next_junction_turn_degrees",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -239,14 +237,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
         df.drop(columns=["_exit_bearing"], inplace=True)
     else:
         df["junction_turn_degrees"] = np.zeros(len(df))
-    # The turn waiting at the *end* of this link, which is the turn recorded
-    # against the next one. A sharp turn ahead is braking that happens during
-    # this link and is billed to it.
-    df["next_junction_turn_degrees"] = (
-        df.groupby("journey_id", sort=False)["junction_turn_degrees"]
-        .shift(-1)
-        .fillna(0.0)
-    )
     # The shape of the road behind: a winding approach means the vehicle
     # arrives having already given up speed to corner.
     df["prev_sinuosity"] = (
@@ -437,9 +427,8 @@ def train_model() -> dict[str, float]:
     schedule = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
     n = x_tr.shape[0]
-    completed = 0
     generator = torch.Generator(device=device).manual_seed(SEED)
-    for completed in range(1, EPOCHS + 1):
+    for _ in range(EPOCHS):
         order = torch.randperm(n, device=device, generator=generator)
         for start in range(0, n, BATCH):
             idx = order[start : start + BATCH]
@@ -451,10 +440,6 @@ def train_model() -> dict[str, float]:
         schedule.step()
         if time.time() - t0 > TRAIN_SECONDS_CAP:
             break
-
-    # Whether the training-time cap bit. A truncated run is not comparable to
-    # an untruncated one, and the metrics alone cannot tell the difference.
-    print(f"epochs completed: {completed}/{EPOCHS}", file=sys.stderr)
 
     model.eval()
 

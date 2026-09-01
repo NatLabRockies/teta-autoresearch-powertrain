@@ -154,3 +154,4 @@ Updated after each experiment. Format:
 - [x] exp21: third hidden layer -> rmse=0.006300, trip_rmse=0.002136 (discard, metrics split)
 - [x] exp22: 2-member ensemble at half epochs -> rmse=0.006270, trip_rmse=0.002171 (discard, trade reversed)
 - [x] exp23: add prev_sinuosity -> rmse=0.006246, trip_rmse=0.002153 (keep, -0.51%/-0.37%)
+- [x] exp24: add next_junction_turn_degrees -> physics_pass=0.0 (discard, exposed the exp10 gate defect)
