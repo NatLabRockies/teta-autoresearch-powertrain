@@ -153,3 +153,4 @@ Updated after each experiment. Format:
 - [x] exp20: lr 1e-3 -> 2e-3 -> rmse=0.006284, trip_rmse=0.002149 (discard, metrics split)
 - [x] exp21: third hidden layer -> rmse=0.006300, trip_rmse=0.002136 (discard, metrics split)
 - [x] exp22: 2-member ensemble at half epochs -> rmse=0.006270, trip_rmse=0.002171 (discard, trade reversed)
+- [x] exp23: add prev_sinuosity -> rmse=0.006246, trip_rmse=0.002153 (keep, -0.51%/-0.37%)
