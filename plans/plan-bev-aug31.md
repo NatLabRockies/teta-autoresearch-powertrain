@@ -156,3 +156,4 @@ Updated after each experiment. Format:
 - [x] exp23: add prev_sinuosity -> rmse=0.006246, trip_rmse=0.002153 (keep, -0.51%/-0.37%)
 - [x] exp24: add next_junction_turn_degrees -> physics_pass=0.0 (discard, exposed the exp10 gate defect)
 - [x] exp25: narrow the release gate -> rmse=0.006240, trip_rmse=0.002162 (keep, guarantee restored)
+- [x] exp26: re-test next_junction_turn_degrees -> rmse=0.006216, trip_rmse=0.002157 (keep, -0.38%/-0.23%)
