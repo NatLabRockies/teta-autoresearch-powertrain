@@ -89,7 +89,6 @@ RAW_COLUMNS = [
     "miles",
     "prev_speed_mph",
     "next_speed_mph",
-    "next_junction_turn_degrees",
 ]
 
 #: Everything the model consumes, which is what `report()` records.
@@ -130,10 +129,6 @@ SINUOSITY_CAP = 10.0
 LENGTH_SCALE_MI = 0.05
 """Scale on the learned length constant of the transient's growth, in miles —
 the dataset's median link is 0.040 mi, so this starts it in the right decade."""
-
-STRAIGHT_ON_DEGREES = 180.0
-"""A full reversal, the largest junction turn there is — the scale that maps a
-turn onto the fraction of its kinetic energy a link sheds cornering."""
 
 MIN_MS = 1e-3
 """Floor on speed in m/s, so the accessory term cannot divide by zero."""
@@ -343,14 +338,14 @@ class PhysicsNet(nn.Module):
             nn.Linear(HIDDEN, HIDDEN),
             nn.ReLU(),
         )
-        self.head = nn.Linear(HIDDEN, 8)
+        self.head = nn.Linear(HIDDEN, 7)
         with torch.no_grad():
             self.head.weight.mul_(0.1)
             # Start the transient head near zero: `T / d` is divided by a link
             # length as small as 0.002 mi, so a mid-range initialization would
             # start the fit orders of magnitude above the target.
             self.head.bias.copy_(
-                torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0, -3.0])
+                torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0])
             )
 
     def forward(self, x: Tensor, raw: Tensor) -> Tensor:
@@ -359,16 +354,10 @@ class PhysicsNet(nn.Module):
         # tolerance. In float32 the climb slope lands a part in 1e7 below
         # `K_POT` and the climb floor reads as violated by 4e-9 GGE. The
         # network stays in float32; the structural algebra is float64.
-        heads = self.head(self.body(x)).double()
-        a, b, c, t, u, w, lam, corner = heads.unbind(dim=-1)
-        (
-            speed_mph,
-            grade_percent,
-            miles,
-            prev_mph,
-            next_mph,
-            turn_ahead,
-        ) = raw.double().unbind(dim=-1)
+        a, b, c, t, u, w, lam = self.head(self.body(x)).double().unbind(dim=-1)
+        speed_mph, grade_percent, miles, prev_mph, next_mph = raw.double().unbind(
+            dim=-1
+        )
 
         resistance = _road_load_per_mile(speed_mph)
         accessory = _accessory_per_mile(speed_mph)
@@ -407,22 +396,8 @@ class PhysicsNet(nn.Module):
         # there. That is what keeps `flat_energy_positive` true by construction
         # while the model is still free to predict regen on real links. Its size
         # is capped by `eta * transient`, exactly the `absolute_floor` bound.
-        # Two ways a link gives kinetic energy back. The first is the drop from
-        # the speed it was entered at to the one it hands on. The second is
-        # braking for the turn at its far end, which the neighbour speeds do
-        # not show because the vehicle slows and then speeds back up inside the
-        # link.
-        #
-        # The second is what exp10 tried to reach by widening the gate to the
-        # link's own speed, and that broke the guarantee: under the 0-fill
-        # convention a synthetic sweep link is indistinguishable from a real
-        # launch-and-stop, so a gate built from speeds alone cannot vanish on
-        # the sweep. A gate built from the *turn ahead* can — the sweep has no
-        # geometry, so its turn is exactly zero, and the release with it.
         released = torch.clamp(
             _kinetic_gge(prev_mph) - _kinetic_gge(next_mph), min=0.0
-        ) + torch.sigmoid(corner) * _kinetic_gge(speed_mph) * (
-            turn_ahead / STRAIGHT_ON_DEGREES
         )
         # The transient may grow with link length. A half-mile link at 30 mph
         # average plausibly contains more acceleration events than a hundred-

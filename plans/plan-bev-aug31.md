@@ -171,3 +171,4 @@ Updated after each experiment. Format:
 - [x] exp38: removal screen, drop next2_speed_mph -> rmse=0.005987, trip_rmse=0.002102 (discard, still earns place)
 - [x] exp39: add prev2_grade_percent -> rmse=0.005949, trip_rmse=0.002094 (discard, both worse)
 - [x] exp40: control re-run of incumbent -> bit-identical metrics (keep, variance is zero at matched epochs)
+- [x] exp41: corner-gated regen re-test -> rmse=0.005901, trip_rmse=0.002089 (discard, truncated 269/300, unresolved)
