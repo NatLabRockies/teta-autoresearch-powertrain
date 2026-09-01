@@ -64,7 +64,6 @@ NET_FEATURES = [
     "next_miles",
     "prev2_miles",
     "prev2_speed_mph",
-    "next2_speed_mph",
     "prev_grade_percent",
     "entry_kinetic_gge",
     "exit_kinetic_gge",
@@ -210,7 +209,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # Two links back: whether the vehicle was already slowing on its approach.
     df["prev2_speed_mph"] = grouped.shift(2).fillna(0.0)
     # Two links forward: whether the braking continues past the next link.
-    df["next2_speed_mph"] = grouped.shift(-2).fillna(0.0)
     # How far the previous link ran, which is how much to trust its average
     # speed as an estimate of the speed at its end. Zero at a trip start, where
     # there is no previous link to distrust.
