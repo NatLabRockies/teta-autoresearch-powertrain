@@ -63,7 +63,6 @@ NET_FEATURES = [
     "prev_miles",
     "next_miles",
     "prev2_miles",
-    "next2_miles",
     "prev2_speed_mph",
     "next2_speed_mph",
     "prev_grade_percent",
@@ -270,7 +269,6 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["next_miles"] = length.shift(-1).fillna(0.0)
     # Reliability context for prev2_speed_mph, as prev_miles is for prev_speed.
     df["prev2_miles"] = length.shift(2).fillna(0.0)
-    df["next2_miles"] = length.shift(-2).fillna(0.0)
     return df
 
 

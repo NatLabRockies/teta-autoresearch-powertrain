@@ -165,3 +165,4 @@ Updated after each experiment. Format:
 - [x] exp32: road-load rate grows with length -> rmse=0.005920, trip_rmse=0.002097 (discard, tie/+0.29%)
 - [x] exp33: re-test width 256 -> rmse=0.005980, trip_rmse=0.002079 (discard, same split as exp15)
 - [x] exp34: add prev2_miles -> rmse=0.005915, trip_rmse=0.002084 (keep, -0.10%/-0.33%)
+- [x] exp35: add next2_miles -> rmse=0.005935, trip_rmse=0.002093 (discard, both worse)
