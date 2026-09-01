@@ -159,3 +159,4 @@ Updated after each experiment. Format:
 - [x] exp26: re-test next_junction_turn_degrees -> rmse=0.006216, trip_rmse=0.002157 (keep, -0.38%/-0.23%)
 - [x] exp27: saturating descent shape -> rmse=0.006215, trip_rmse=0.002160 (discard, tie/+0.14%)
 - [x] exp28: removal screen, drop entry_kinetic_gge -> rmse=0.006222, trip_rmse=0.002167 (discard, still earns place)
+- [x] exp29: add exit_kinetic_gge -> rmse=0.006217, trip_rmse=0.002138 (keep, tie/-0.88%)
