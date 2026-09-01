@@ -58,7 +58,6 @@ NET_FEATURES = [
     "speed_mph",
     "prev_speed_mph",
     "next_speed_mph",
-    "prev_miles",
 ]
 
 #: Consumed by the structural algebra rather than by the network.
@@ -116,14 +115,9 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     every synthetic link its own single-link journey, so each one is treated as
     a standing start to a full stop.
     """
-    journey = df.groupby("journey_id", sort=False)
-    speed = journey["speed_mph"]
-    df["prev_speed_mph"] = speed.shift(1).fillna(0.0)
-    df["next_speed_mph"] = speed.shift(-1).fillna(0.0)
-    # How far the previous link ran, which is how much to trust its average
-    # speed as an estimate of the speed at its end. Zero at a trip start, where
-    # there is no previous link to distrust.
-    df["prev_miles"] = journey["miles"].shift(1).fillna(0.0)
+    grouped = df.groupby("journey_id", sort=False)["speed_mph"]
+    df["prev_speed_mph"] = grouped.shift(1).fillna(0.0)
+    df["next_speed_mph"] = grouped.shift(-1).fillna(0.0)
     return df
 
 

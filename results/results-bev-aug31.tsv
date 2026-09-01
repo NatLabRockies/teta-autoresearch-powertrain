@@ -3,3 +3,4 @@ eeb388b	RandomForest	0.013345	0.003037	0.000000	0.098493	0.095871	8.826788	keep	
 0a3584f	PhysicsMLP	0.013397	0.003060	1.000000	0.000000	0.000000	0.000000	keep	speed_mph,grade_percent,miles	structured physics parametrization: 4 bounded heads (A,B,C,T) driven by an MLP
 06bd94d	PhysicsMLP	0.010816	0.003008	1.000000	0.000000	0.000000	3.312173	keep	speed_mph,prev_speed_mph,grade_percent,miles	add prev_speed_mph to the network inputs
 b72184e	PhysicsMLP	0.010305	0.002871	1.000000	0.000000	0.000000	2.631165	keep	speed_mph,prev_speed_mph,next_speed_mph,grade_percent,miles	add next_speed_mph (the exit half of the kinetic delta)
+c9b5a10	PhysicsMLP	0.009984	0.002880	1.000000	0.000000	0.000000	0.585244	discard	speed_mph,prev_speed_mph,next_speed_mph,prev_miles,grade_percent,miles	add prev_miles (rmse -3.2%, trip_rmse +0.3%)

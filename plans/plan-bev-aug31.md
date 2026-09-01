@@ -134,3 +134,4 @@ Updated after each experiment. Format:
 - [x] exp1: structured physics parametrization, 4 bounded heads -> rmse=0.013397, trip_rmse=0.003060, physics_pass=1.0 (keep, first physically legal model)
 - [x] exp2: add prev_speed_mph -> rmse=0.010816, trip_rmse=0.003008, physics_pass=1.0 (keep, -19.3% rmse)
 - [x] exp3: add next_speed_mph -> rmse=0.010305, trip_rmse=0.002871, physics_pass=1.0 (keep, -4.7%/-4.6%)
+- [x] exp4: add prev_miles -> rmse=0.009984, trip_rmse=0.002880 (discard, trip_rmse +0.3%)
