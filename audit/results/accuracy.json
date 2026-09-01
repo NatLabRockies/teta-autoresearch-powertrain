@@ -1,0 +1,398 @@
+{
+  "n_train": 1310819,
+  "n_test": 327647,
+  "baseline": {
+    "rmse": 0.013345,
+    "trip_rmse": 0.003037
+  },
+  "reported": {
+    "unguided": {
+      "commit": "bc07466",
+      "rmse": 0.004785,
+      "trip_rmse": 0.001231
+    },
+    "domain-guided": {
+      "commit": "e315384",
+      "rmse": 0.006823,
+      "trip_rmse": 0.002239
+    }
+  },
+  "ledger": {
+    "unguided": [
+      {
+        "feature": "speed_mph",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "link-average speed; posted or probe",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "grade_percent",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "link-average gradient",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "miles",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "link distance",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "dke_per_mile",
+        "tier": "FUTURE",
+        "deployable": false,
+        "reason": "(next_speed^2 - prev_speed^2) / miles. Spans the link from the PREVIOUS link's speed to the NEXT link's, so it inherits the next link \u2014 which is what the search is deciding. Its causal half is already in the model as dke_in_link.",
+        "clause": "we will only have the context of the previous links that have been traversed and know nothing about the future links that might be traversed.",
+        "causal_substitute": "(speed_mph^2 - prev_speed^2) / miles  [= dke_in_link]",
+        "label_floats": 0
+      },
+      {
+        "feature": "dke_in_link",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "(speed_mph^2 - prev_speed^2) / miles \u2014 kinetic-energy change from the entry speed to this link's own speed, from one link of lookback. This is the same physics the domain-guided arm reached as ke_delta_per_mile.",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "gap_seconds",
+        "tier": "TRACE",
+        "deployable": false,
+        "reason": "idle seconds between the previous link ending and this one starting, from link_start_time / link_end_time. Those columns are artifacts of the simulated drive-cycle trace; a map has no counterpart, so this is not recoverable at any memory price. The arm's own reasoning is sound \u2014 a stop means the entry speed was really 0 \u2014 but the signal is unobservable at inference.",
+        "clause": "when we're applying these models for inference, we only have limited data (which is why we're developing these models in the first place).",
+        "causal_substitute": null,
+        "label_floats": null
+      },
+      {
+        "feature": "prev_miles",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "distance of the single previous link",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "next_miles",
+        "tier": "FUTURE",
+        "deployable": false,
+        "reason": "distance of the FOLLOWING link. Not chosen yet when the current link is scored; no amount of label state recovers it.",
+        "clause": "we will only have the context of the previous links that have been traversed and know nothing about the future links that might be traversed.",
+        "causal_substitute": null,
+        "label_floats": null
+      },
+      {
+        "feature": "next_gap_seconds",
+        "tier": "TRACE",
+        "deployable": false,
+        "reason": "the exit-side mirror of gap_seconds. Fails twice over: it is trace-only AND it reads the following link.",
+        "clause": "when we're applying these models for inference, we only have limited data (which is why we're developing these models in the first place).",
+        "causal_substitute": null,
+        "label_floats": null
+      },
+      {
+        "feature": "prev2_speed",
+        "tier": "STATE",
+        "deployable": false,
+        "reason": "speed of the link TWO back. Causal \u2014 the vehicle has traversed it \u2014 but domain.md caps the lookback at one link, so this is one extra float every search label must carry, and labels differing in it cannot be merged. The one out-of-contract feature in this model that has an honest price.",
+        "clause": "our current search harness would incur a huge memory penalty for trying to enumerate new labels with that much previous context.",
+        "causal_substitute": "prev2_speed (unchanged \u2014 it is already causal)",
+        "label_floats": 1
+      },
+      {
+        "feature": "dv_out",
+        "tier": "FUTURE",
+        "deployable": false,
+        "reason": "next_speed - speed_mph, the exit speed change. Inherits the next link.",
+        "clause": "we will only have the context of the previous links that have been traversed and know nothing about the future links that might be traversed.",
+        "causal_substitute": null,
+        "label_floats": null
+      },
+      {
+        "feature": "journey_rate",
+        "tier": "LABEL",
+        "deployable": false,
+        "reason": "leave-one-out mean of the TARGET over the journey's training links, shrunk to the global mean. This is not a feature at inference: there are no labels to average, and the average spans links the search has not chosen. It is also the model's single largest lever.",
+        "clause": "we will only have the context of the previous links that have been traversed and know nothing about the future links that might be traversed.",
+        "causal_substitute": null,
+        "label_floats": null
+      },
+      {
+        "feature": "journey_gge_per_mile",
+        "tier": "LABEL",
+        "deployable": false,
+        "reason": "the same journey offset weighted by distance \u2014 training energy_gge over training miles. Target-derived, journey-wide, same verdict.",
+        "clause": "we will only have the context of the previous links that have been traversed and know nothing about the future links that might be traversed.",
+        "causal_substitute": null,
+        "label_floats": null
+      }
+    ],
+    "domain-guided": [
+      {
+        "feature": "speed_mph",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "link-average speed; posted or probe",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "grade_percent",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "link-average gradient",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "miles",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "link distance",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "prev_speed_mph",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "speed of the single previously-traversed link",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "ke_delta_per_mile",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "(speed_mph^2 - prev_speed_mph^2) / (2 * miles) \u2014 kinetic-energy change across the entry boundary, from one link of lookback",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "sinuosity",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "travelled length over endpoint crow-flight distance; a static road attribute precomputed offline from geometry",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "junction_turn_degrees",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "heading change from the previous link's exit bearing into this link's entry bearing; both bearings are static, the pairing needs one link of lookback",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "prev_grade_percent",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "gradient of the single previous link",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "prev_miles",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "distance of the single previous link",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "prev_sinuosity",
+        "tier": "LOOKBACK",
+        "deployable": true,
+        "reason": "sinuosity of the single previous link",
+        "clause": "If you're considering any kind of link sequencing, we only want to include a single one link lookback.",
+        "causal_substitute": null,
+        "label_floats": 0
+      },
+      {
+        "feature": "vertices_per_mile",
+        "tier": "LINK",
+        "deployable": true,
+        "reason": "linestring vertex density; a static road attribute standing in for road class",
+        "clause": "Our inference environment has the following features: Average Speed, Average Road Gradient, Link Distance, Geometry.",
+        "causal_substitute": null,
+        "label_floats": 0
+      }
+    ]
+  },
+  "components": [
+    {
+      "component": "sequence_member",
+      "tier": "FUTURE",
+      "deployable": false,
+      "reason": "a 2-block dilated 1-D CNN over each journey's whole link chain. Kernel 5 at dilations 1 and 2 gives a receptive field of 13 links \u2014 SIX AHEAD as well as six behind. It reads the future structurally, not through a named feature, so no feature ledger catches it. A left-masked version of the same network IS causal, and this audit fits one to price the difference.",
+      "causal_substitute": "the same CNN with causal (left-only) padding"
+    },
+    {
+      "component": "journey_offset",
+      "tier": "LABEL",
+      "deployable": false,
+      "reason": "a distance-weighted per-journey correction built from the training residuals of that journey's own links. Needs labels, and needs the whole journey. Not deployable in a route search at any price.",
+      "causal_substitute": null
+    }
+  ],
+  "configs": {
+    "unguided/reported": {
+      "rmse": 0.004795,
+      "trip_rmse": 0.001235,
+      "vs_baseline_rmse_pct": -64.07,
+      "vs_baseline_trip_pct": -59.34,
+      "note": "the full blend, 13 features, as the arm ran it"
+    },
+    "unguided/as-run/gbdt-only": {
+      "rmse": 0.004962,
+      "trip_rmse": 0.001718,
+      "vs_baseline_rmse_pct": -62.82,
+      "vs_baseline_trip_pct": -43.43,
+      "note": "tree ensemble alone; no sequence member, no journey offset"
+    },
+    "unguided/as-run/no-offset": {
+      "rmse": 0.004803,
+      "trip_rmse": 0.001704,
+      "vs_baseline_rmse_pct": -64.01,
+      "vs_baseline_trip_pct": -43.88,
+      "note": "trees + sequence member; no journey offset"
+    },
+    "unguided/audited-mean": {
+      "rmse": 0.015628,
+      "trip_rmse": 0.004253,
+      "vs_baseline_rmse_pct": 17.11,
+      "vs_baseline_trip_pct": 40.03,
+      "note": "as-trained trees; out-of-contract inputs absent (train mean)"
+    },
+    "unguided/audited-contract": {
+      "rmse": 0.01405,
+      "trip_rmse": 0.004096,
+      "vs_baseline_rmse_pct": 5.28,
+      "vs_baseline_trip_pct": 34.86,
+      "note": "as-trained trees; strict LINK+LOOKBACK substitution \u2014 the Compass number"
+    },
+    "unguided/audited-state": {
+      "rmse": 0.011578,
+      "trip_rmse": 0.002726,
+      "vs_baseline_rmse_pct": -13.24,
+      "vs_baseline_trip_pct": -10.25,
+      "note": "as-trained trees; prev2_speed restored (costs 1 float per search label)"
+    },
+    "unguided/retrained-contract": {
+      "rmse": 0.007557,
+      "trip_rmse": 0.002362,
+      "vs_baseline_rmse_pct": -43.37,
+      "vs_baseline_trip_pct": -22.23,
+      "note": "refit on LINK+LOOKBACK features only \u2014 the fair fight (5 features)",
+      "features": [
+        "speed_mph",
+        "grade_percent",
+        "miles",
+        "dke_in_link",
+        "prev_miles"
+      ]
+    },
+    "unguided/retrained-state": {
+      "rmse": 0.007087,
+      "trip_rmse": 0.002246,
+      "vs_baseline_rmse_pct": -46.89,
+      "vs_baseline_trip_pct": -26.05,
+      "note": "refit with prev2_speed allowed (6 features)",
+      "features": [
+        "speed_mph",
+        "grade_percent",
+        "miles",
+        "dke_in_link",
+        "prev_miles",
+        "prev2_speed"
+      ]
+    },
+    "unguided/retrained-causal-seq": {
+      "rmse": 0.00717,
+      "trip_rmse": 0.002279,
+      "vs_baseline_rmse_pct": -46.27,
+      "vs_baseline_trip_pct": -24.95,
+      "note": "contract trees + left-masked CNN over 5 deployable features; no journey offset"
+    },
+    "domain-guided/reported": {
+      "rmse": 0.006823,
+      "trip_rmse": 0.002237,
+      "vs_baseline_rmse_pct": -48.87,
+      "vs_baseline_trip_pct": -26.34,
+      "note": "11 features, as the arm ran it"
+    },
+    "domain-guided/audited": {
+      "rmse": 0.006823,
+      "trip_rmse": 0.002237,
+      "vs_baseline_rmse_pct": -48.87,
+      "vs_baseline_trip_pct": -26.34,
+      "note": "identical to reported: all 11 features are inside the contract"
+    }
+  },
+  "reproduction": {
+    "unguided": {
+      "rmse": {
+        "archived": 0.004785,
+        "reproduced": 0.004795,
+        "delta_pct": 0.2,
+        "tolerance_pct": 5.0,
+        "within_tolerance": true
+      },
+      "trip_rmse": {
+        "archived": 0.001231,
+        "reproduced": 0.001235,
+        "delta_pct": 0.316,
+        "tolerance_pct": 5.0,
+        "within_tolerance": true
+      }
+    },
+    "domain-guided": {
+      "rmse": {
+        "archived": 0.006823,
+        "reproduced": 0.006823,
+        "delta_pct": -0.003,
+        "tolerance_pct": 2.0,
+        "within_tolerance": true
+      },
+      "trip_rmse": {
+        "archived": 0.002239,
+        "reproduced": 0.002237,
+        "delta_pct": -0.088,
+        "tolerance_pct": 2.0,
+        "within_tolerance": true
+      }
+    }
+  },
+  "causal_sequence": {
+    "features": [
+      "speed_mph",
+      "grade_percent",
+      "miles",
+      "dke_in_link",
+      "prev_miles"
+    ],
+    "half_width_links": 6,
+    "blend": 0.3
+  },
+  "elapsed_seconds": 120.6
+}

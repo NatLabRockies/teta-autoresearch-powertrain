@@ -1,8 +1,17 @@
 *.local.*
 
-# pixi environments
+# Datasets are never committed here — see data/README.md
+data/raw
+data/processed
+*.parquet
+
+# pixi environments (audit/ has its own, built from the arms' lockfile)
 .pixi/*
 !.pixi/config.toml
+
+# Trained models the audit caches between runs — rebuilt by `run_audit.py`
+audit/cache/
+audit/results/run.log
 
 __pycache__/
 *.pyc
@@ -14,10 +23,3 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .ipynb_checkpoints/
-
-*.egg-info/
-
-# Optuna study DBs — regeneratable, often multi-MB, not worth committing
-domains/*/results/**/*.db
-optimizers/**/results/
-results/**/*.db

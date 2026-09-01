@@ -1,0 +1,28 @@
+*.local.*
+
+*.code-workspace
+
+# pixi environments
+.pixi/*
+!.pixi/config.toml
+
+__pycache__/
+*.pyc
+*.pkl
+*.joblib
+
+.DS_Store
+.vscode/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+*.egg-info/
+
+# Datasets are not committed — see data/README.md
+# (no trailing slash: these are often symlinks, which git does not treat as dirs)
+data/raw
+data/processed
+
+# Per-run scratch produced by the experiment loop
+run.log
