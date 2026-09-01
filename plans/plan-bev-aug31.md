@@ -149,3 +149,4 @@ Updated after each experiment. Format:
 - [x] exp16: epochs 300 -> 150 -> rmse=0.006508, trip_rmse=0.002247 (discard, both worse)
 - [x] exp17: add entry_kinetic_gge -> rmse=0.006466, trip_rmse=0.002215 (keep, -0.19%/-0.14%)
 - [x] exp18: add sinuosity -> rmse=0.006346, trip_rmse=0.002166 (keep, -1.9%/-2.2%)
+- [x] exp19: add junction_turn_degrees -> rmse=0.006278, trip_rmse=0.002161 (keep, -1.1%/-0.2%)
