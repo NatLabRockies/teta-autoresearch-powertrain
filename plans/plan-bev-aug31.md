@@ -162,3 +162,4 @@ Updated after each experiment. Format:
 - [x] exp29: add exit_kinetic_gge -> rmse=0.006217, trip_rmse=0.002138 (keep, tie/-0.88%)
 - [x] exp30: add prev3_speed_mph -> rmse=0.006203, trip_rmse=0.002157 (discard, chain exhausted at +/-2)
 - [x] exp31: transient grows with link length -> rmse=0.005921, trip_rmse=0.002091 (keep, -4.8%/-2.2%)
+- [x] exp32: road-load rate grows with length -> rmse=0.005920, trip_rmse=0.002097 (discard, tie/+0.29%)
