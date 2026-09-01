@@ -364,12 +364,6 @@ class PhysicsNet(nn.Module):
         # the link gives back when it ends slower than it started, which is how
         # a flat link can come out negative at all.
         #
-        # The release is sized from the highest speed the link is known to have
-        # reached - its own average or the one it was entered at - down to the
-        # one it hands on. A link that accelerates and then brakes gives energy
-        # back even though its neighbours are matched, and the entry-speed-only
-        # form could not see that.
-        #
         # `T-` is gated by the energy actually released, so it vanishes at
         # steady state — which is what the physics sweep is, since every
         # synthetic link is its own journey and both neighbour speeds are equal
@@ -377,9 +371,7 @@ class PhysicsNet(nn.Module):
         # while the model is still free to predict regen on real links. Its size
         # is capped by `eta * transient`, exactly the `absolute_floor` bound.
         released = torch.clamp(
-            torch.maximum(_kinetic_gge(prev_mph), _kinetic_gge(speed_mph))
-            - _kinetic_gge(next_mph),
-            min=0.0,
+            _kinetic_gge(prev_mph) - _kinetic_gge(next_mph), min=0.0
         )
         fixed = (transient / ETA) * torch.sigmoid(t) - torch.sigmoid(u) * torch.minimum(
             released, ETA * transient
