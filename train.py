@@ -66,6 +66,7 @@ NET_FEATURES = [
     "prev_grade_percent",
     "entry_kinetic_gge",
     "sinuosity",
+    "junction_turn_degrees",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -133,7 +134,7 @@ def load_data() -> pd.DataFrame:
     return df.sort_values(["journey_id", "link_start_time"])
 
 
-def _sinuosity(df: pd.DataFrame) -> np.ndarray:
+def _sinuosity(df: pd.DataFrame, geometry: np.ndarray | None) -> np.ndarray:
     """Path length over straight-line endpoint distance, >= 1 for a real road.
 
     A winding link costs more than its length suggests: the vehicle corners,
@@ -143,9 +144,8 @@ def _sinuosity(df: pd.DataFrame) -> np.ndarray:
     its own value inside `predict`, and 1.0 is the right one: a synthetic link
     is straight.
     """
-    if "geometry" not in df.columns:
+    if geometry is None:
         return np.ones(len(df))
-    geometry = shapely.from_wkb(df["geometry"].to_numpy())
     start = shapely.get_point(geometry, 0)
     end = shapely.get_point(geometry, -1)
     lat = np.radians(0.5 * (shapely.get_y(start) + shapely.get_y(end)))
@@ -156,6 +156,23 @@ def _sinuosity(df: pd.DataFrame) -> np.ndarray:
     # A link whose endpoints coincide is a loop, not an infinitely winding
     # road; cap it rather than letting the ratio run away.
     return np.clip(length_m / np.maximum(chord_m, 1e-6), 1.0, SINUOSITY_CAP)
+
+
+def _bearings(geometry: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Compass bearing entering and leaving each link, in degrees.
+
+    Taken from the first and last *segment* of the link's geometry rather than
+    from its endpoints, so a link that bends in the middle still reports the
+    direction it actually joins its neighbours at.
+    """
+    def bearing(tail: int, head: int) -> np.ndarray:
+        a, b = shapely.get_point(geometry, tail), shapely.get_point(geometry, head)
+        lat = np.radians(0.5 * (shapely.get_y(a) + shapely.get_y(b)))
+        dx = np.radians(shapely.get_x(b) - shapely.get_x(a)) * np.cos(lat)
+        dy = np.radians(shapely.get_y(b) - shapely.get_y(a))
+        return np.degrees(np.arctan2(dx, dy))
+
+    return bearing(0, 1), bearing(-2, -1)
 
 
 def _kinetic_gge_numpy(speed_mph: np.ndarray) -> np.ndarray:
@@ -197,7 +214,28 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["entry_kinetic_gge"] = _kinetic_gge_numpy(
         df["speed_mph"].to_numpy()
     ) - _kinetic_gge_numpy(df["prev_speed_mph"].to_numpy())
-    df["sinuosity"] = _sinuosity(df)
+    # One WKB decode for the whole frame, shared by every geometry feature:
+    # decoding 1.6M linestrings costs ~20s, and doing it twice was enough to
+    # push the run into its training-time cap.
+    geometry = (
+        shapely.from_wkb(df["geometry"].to_numpy())
+        if "geometry" in df.columns
+        else None
+    )
+    df["sinuosity"] = _sinuosity(df, geometry)
+    # The turn taken at the junction into this link: how far the vehicle had to
+    # swing between leaving the previous link and joining this one. A sharp
+    # turn is a deceleration the link averages hide. The sweep frame has no
+    # geometry, so a synthetic link is entered straight on.
+    if geometry is not None:
+        entry, exit_ = _bearings(geometry)
+        df["_exit_bearing"] = exit_
+        previous = df.groupby("journey_id", sort=False)["_exit_bearing"].shift(1)
+        turn = (entry - previous.to_numpy() + 180.0) % 360.0 - 180.0
+        df["junction_turn_degrees"] = np.abs(np.nan_to_num(turn))
+        df.drop(columns=["_exit_bearing"], inplace=True)
+    else:
+        df["junction_turn_degrees"] = np.zeros(len(df))
     length = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = length.shift(1).fillna(0.0)
     df["next_miles"] = length.shift(-1).fillna(0.0)
