@@ -142,3 +142,4 @@ Updated after each experiment. Format:
 - [x] exp9: add next_miles -> rmse=0.006757, trip_rmse=0.002287 (keep, -2.5%/-1.2%)
 - [x] exp10: release sized from the link own peak -> rmse=0.006757, trip_rmse=0.002277 (keep, tie/-0.44%)
 - [x] exp11: re-test prev2_speed_mph -> rmse=0.006583, trip_rmse=0.002258 (keep, -2.6%/-0.8%)
+- [x] exp12: add next2_speed_mph -> rmse=0.006488, trip_rmse=0.002238 (keep, -1.4%/-0.9%)
