@@ -125,6 +125,10 @@ EARTH_RADIUS_M = 6371000.0
 SINUOSITY_CAP = 10.0
 """Ceiling on the winding ratio, for links whose endpoints nearly coincide."""
 
+LENGTH_SCALE_MI = 0.05
+"""Scale on the learned length constant of the transient's growth, in miles —
+the dataset's median link is 0.040 mi, so this starts it in the right decade."""
+
 MIN_MS = 1e-3
 """Floor on speed in m/s, so the accessory term cannot divide by zero."""
 
@@ -331,13 +335,15 @@ class PhysicsNet(nn.Module):
             nn.Linear(HIDDEN, HIDDEN),
             nn.ReLU(),
         )
-        self.head = nn.Linear(HIDDEN, 5)
+        self.head = nn.Linear(HIDDEN, 7)
         with torch.no_grad():
             self.head.weight.mul_(0.1)
             # Start the transient head near zero: `T / d` is divided by a link
             # length as small as 0.002 mi, so a mid-range initialization would
             # start the fit orders of magnitude above the target.
-            self.head.bias.copy_(torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0]))
+            self.head.bias.copy_(
+                torch.tensor([0.0, 0.0, 0.0, -3.0, -3.0, -3.0, 0.0])
+            )
 
     def forward(self, x: Tensor, raw: Tensor) -> Tensor:
         # The heads sit exactly on their bounds when a sigmoid saturates, and
@@ -345,7 +351,7 @@ class PhysicsNet(nn.Module):
         # tolerance. In float32 the climb slope lands a part in 1e7 below
         # `K_POT` and the climb floor reads as violated by 4e-9 GGE. The
         # network stays in float32; the structural algebra is float64.
-        a, b, c, t, u = self.head(self.body(x)).double().unbind(dim=-1)
+        a, b, c, t, u, w, lam = self.head(self.body(x)).double().unbind(dim=-1)
         speed_mph, grade_percent, miles, prev_mph, next_mph = raw.double().unbind(
             dim=-1
         )
@@ -390,9 +396,21 @@ class PhysicsNet(nn.Module):
         released = torch.clamp(
             _kinetic_gge(prev_mph) - _kinetic_gge(next_mph), min=0.0
         )
-        fixed = (transient / ETA) * torch.sigmoid(t) - torch.sigmoid(u) * torch.minimum(
-            released, ETA * transient
-        )
+        # The transient may grow with link length. A half-mile link at 30 mph
+        # average plausibly contains more acceleration events than a hundred-
+        # foot one at the same average, and a fixed T says they contain the
+        # same. `energy_grows_with_distance` permits any T that is
+        # non-decreasing in distance, since the growth it demands is already
+        # covered by `A >= res/2` - so a saturating factor is legal where a
+        # free function of length would not be.
+        #
+        # At `growth = 0` this is exactly the length-independent T it replaces,
+        # so the relaxation only adds freedom.
+        scale = LENGTH_SCALE_MI * nn.functional.softplus(lam)
+        growth = torch.sigmoid(w) * torch.exp(-miles / scale)
+        fixed = (transient / ETA) * torch.sigmoid(t) * (
+            1.0 - growth
+        ) - torch.sigmoid(u) * torch.minimum(released, ETA * transient)
 
         return rate_flat + climb - descend * down + fixed / miles
 
