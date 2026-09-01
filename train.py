@@ -66,6 +66,7 @@ NET_FEATURES = [
     "prev2_speed_mph",
     "next2_speed_mph",
     "prev_grade_percent",
+    "prev2_grade_percent",
     "entry_kinetic_gge",
     "exit_kinetic_gge",
     "sinuosity",
@@ -219,6 +220,9 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # the average speeds do not show.
     grade = df.groupby("journey_id", sort=False)["grade_percent"]
     df["prev_grade_percent"] = grade.shift(1).fillna(0.0)
+    # Two links of terrain behind: whether the vehicle is partway down a hill
+    # or has just reached the bottom of one.
+    df["prev2_grade_percent"] = grade.shift(2).fillna(0.0)
     # The signed kinetic work of entering the link, in the target's own units.
     # The structure already divides a fixed energy by distance; what it cannot
     # do is square a speed, so hand the difference of squares over directly.
