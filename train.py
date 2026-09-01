@@ -95,13 +95,8 @@ DATA_PATH = "data/processed/2017_Chevy_Bolt.parquet"
 
 # --- model config ---
 HIDDEN = 128
-EPOCHS = 150
+EPOCHS = 300
 BATCH = 8192
-#: Members averaged. Every physics check is a linear inequality in the
-#: prediction, so the average of legal models is itself legal — the guarantee
-#: survives ensembling untouched. Held at constant compute against the single
-#: 300-epoch model it replaces: two members, half the epochs each.
-MEMBERS = 2
 LR = 1e-3
 WEIGHT_DECAY = 1e-4
 SEED = 0
@@ -397,6 +392,7 @@ def _columns(df: pd.DataFrame, device: torch.device) -> tuple[Tensor, Tensor]:
 def train_model() -> dict[str, float]:
     """Train and evaluate. Returns results dict."""
     t0 = time.time()
+    torch.manual_seed(SEED)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     df = add_features(load_data())
@@ -418,39 +414,34 @@ def train_model() -> dict[str, float]:
     # The target's own scale, so the loss is O(1) whatever the units.
     y_scale = float(y_tr.std())
 
+    model = PhysicsNet(len(NET_FEATURES)).to(device)
+    optimizer = torch.optim.AdamW(
+        model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY
+    )
+    schedule = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
+
     n = x_tr.shape[0]
-    models = []
-    for member in range(MEMBERS):
-        torch.manual_seed(SEED + member)
-        model = PhysicsNet(len(NET_FEATURES)).to(device)
-        optimizer = torch.optim.AdamW(
-            model.parameters(), lr=LR, weight_decay=WEIGHT_DECAY
-        )
-        schedule = torch.optim.lr_scheduler.CosineAnnealingLR(
-            optimizer, T_max=EPOCHS
-        )
-        generator = torch.Generator(device=device).manual_seed(SEED + member)
-        for _ in range(EPOCHS):
-            order = torch.randperm(n, device=device, generator=generator)
-            for start in range(0, n, BATCH):
-                idx = order[start : start + BATCH]
-                pred = model(x_tr[idx], raw_tr[idx])
-                loss = torch.mean(((pred - y_tr[idx]) / y_scale) ** 2)
-                optimizer.zero_grad(set_to_none=True)
-                loss.backward()
-                optimizer.step()
-            schedule.step()
-            if time.time() - t0 > TRAIN_SECONDS_CAP:
-                break
-        model.eval()
-        models.append(model)
+    generator = torch.Generator(device=device).manual_seed(SEED)
+    for _ in range(EPOCHS):
+        order = torch.randperm(n, device=device, generator=generator)
+        for start in range(0, n, BATCH):
+            idx = order[start : start + BATCH]
+            pred = model(x_tr[idx], raw_tr[idx])
+            loss = torch.mean(((pred - y_tr[idx]) / y_scale) ** 2)
+            optimizer.zero_grad(set_to_none=True)
+            loss.backward()
+            optimizer.step()
+        schedule.step()
+        if time.time() - t0 > TRAIN_SECONDS_CAP:
+            break
+
+    model.eval()
 
     @torch.no_grad()
     def score(frame: pd.DataFrame) -> np.ndarray:
         """Predict for a frame that already carries the derived columns."""
         x, raw = _columns(frame, device)
-        x = (x - mean) / std
-        out = torch.stack([m(x, raw) for m in models]).mean(dim=0)
+        out = model((x - mean) / std, raw)
         return out.cpu().numpy().astype(np.float64)
 
     def predict(frame: pd.DataFrame) -> np.ndarray:

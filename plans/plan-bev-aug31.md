@@ -152,3 +152,4 @@ Updated after each experiment. Format:
 - [x] exp19: add junction_turn_degrees -> rmse=0.006278, trip_rmse=0.002161 (keep, -1.1%/-0.2%)
 - [x] exp20: lr 1e-3 -> 2e-3 -> rmse=0.006284, trip_rmse=0.002149 (discard, metrics split)
 - [x] exp21: third hidden layer -> rmse=0.006300, trip_rmse=0.002136 (discard, metrics split)
+- [x] exp22: 2-member ensemble at half epochs -> rmse=0.006270, trip_rmse=0.002171 (discard, trade reversed)
