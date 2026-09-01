@@ -133,7 +133,7 @@ the dataset's median link is 0.040 mi, so this starts it in the right decade."""
 MIN_MS = 1e-3
 """Floor on speed in m/s, so the accessory term cannot divide by zero."""
 
-GRADE_SLACK_REF = 0.25
+GRADE_SLACK_REF = 1.0
 """Grade, in percent, at which the climb term may spend the full flat-rate
 headroom. Below it the allowance is scaled down linearly to zero, which is what
 keeps level ground exactly level."""
