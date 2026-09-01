@@ -63,6 +63,7 @@ NET_FEATURES = [
     "prev2_speed_mph",
     "next2_speed_mph",
     "prev_grade_percent",
+    "entry_kinetic_gge",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -124,6 +125,12 @@ def load_data() -> pd.DataFrame:
     return df.sort_values(["journey_id", "link_start_time"])
 
 
+def _kinetic_gge_numpy(speed_mph: np.ndarray) -> np.ndarray:
+    """`_kinetic_gge` for feature construction, before anything is on the GPU."""
+    v = speed_mph * physics.MPH_TO_MS
+    return 0.5 * physics.EFFECTIVE_MASS_KG * v**2 / physics.J_PER_GGE
+
+
 def add_features(df: pd.DataFrame) -> pd.DataFrame:
     """Derive the neighbour-link columns, in place.
 
@@ -151,6 +158,12 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # the average speeds do not show.
     grade = df.groupby("journey_id", sort=False)["grade_percent"]
     df["prev_grade_percent"] = grade.shift(1).fillna(0.0)
+    # The signed kinetic work of entering the link, in the target's own units.
+    # The structure already divides a fixed energy by distance; what it cannot
+    # do is square a speed, so hand the difference of squares over directly.
+    df["entry_kinetic_gge"] = _kinetic_gge_numpy(
+        df["speed_mph"].to_numpy()
+    ) - _kinetic_gge_numpy(df["prev_speed_mph"].to_numpy())
     length = df.groupby("journey_id", sort=False)["miles"]
     df["prev_miles"] = length.shift(1).fillna(0.0)
     df["next_miles"] = length.shift(-1).fillna(0.0)
