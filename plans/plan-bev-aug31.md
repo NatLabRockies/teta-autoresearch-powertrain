@@ -151,3 +151,4 @@ Updated after each experiment. Format:
 - [x] exp18: add sinuosity -> rmse=0.006346, trip_rmse=0.002166 (keep, -1.9%/-2.2%)
 - [x] exp19: add junction_turn_degrees -> rmse=0.006278, trip_rmse=0.002161 (keep, -1.1%/-0.2%)
 - [x] exp20: lr 1e-3 -> 2e-3 -> rmse=0.006284, trip_rmse=0.002149 (discard, metrics split)
+- [x] exp21: third hidden layer -> rmse=0.006300, trip_rmse=0.002136 (discard, metrics split)

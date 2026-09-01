@@ -307,8 +307,6 @@ class PhysicsNet(nn.Module):
             nn.ReLU(),
             nn.Linear(HIDDEN, HIDDEN),
             nn.ReLU(),
-            nn.Linear(HIDDEN, HIDDEN),
-            nn.ReLU(),
         )
         self.head = nn.Linear(HIDDEN, 5)
         with torch.no_grad():
