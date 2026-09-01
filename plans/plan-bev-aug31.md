@@ -147,3 +147,4 @@ Updated after each experiment. Format:
 - [x] exp14: add next_grade_percent -> rmse=0.006480, trip_rmse=0.002218 (discard, tie)
 - [x] exp15: widen 128 -> 256 -> rmse=0.006530, trip_rmse=0.002204 (discard, metrics split)
 - [x] exp16: epochs 300 -> 150 -> rmse=0.006508, trip_rmse=0.002247 (discard, both worse)
+- [x] exp17: add entry_kinetic_gge -> rmse=0.006466, trip_rmse=0.002215 (keep, -0.19%/-0.14%)
