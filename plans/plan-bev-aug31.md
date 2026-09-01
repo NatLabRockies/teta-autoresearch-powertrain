@@ -175,3 +175,4 @@ Updated after each experiment. Format:
 - [x] exp42: add next_sinuosity -> rmse=0.005919, trip_rmse=0.002085 (discard, tie)
 - [x] exp43: corner-gated regen, third attempt -> rmse=0.005901, trip_rmse=0.002087 (discard, real trade)
 - [x] exp44: drop weight decay -> rmse=0.005916, trip_rmse=0.002090 (discard, earns its place)
+- [x] exp45: format-only cleanup -> rmse=0.005915, trip_rmse=0.002084 (keep, bit-identical)
