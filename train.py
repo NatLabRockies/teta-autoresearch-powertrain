@@ -58,6 +58,7 @@ NET_FEATURES = [
     "speed_mph",
     "prev_speed_mph",
     "next_speed_mph",
+    "prev2_speed_mph",
 ]
 
 #: Consumed by the structural algebra rather than by the network.
@@ -115,9 +116,12 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     every synthetic link its own single-link journey, so each one is treated as
     a standing start to a full stop.
     """
-    grouped = df.groupby("journey_id", sort=False)["speed_mph"]
-    df["prev_speed_mph"] = grouped.shift(1).fillna(0.0)
-    df["next_speed_mph"] = grouped.shift(-1).fillna(0.0)
+    speed = df.groupby("journey_id", sort=False)["speed_mph"]
+    df["prev_speed_mph"] = speed.shift(1).fillna(0.0)
+    df["next_speed_mph"] = speed.shift(-1).fillna(0.0)
+    # Two links back: the approach profile. Whether the vehicle was already
+    # slowing before the previous link says how it entered this one.
+    df["prev2_speed_mph"] = speed.shift(2).fillna(0.0)
     return df
 
 
