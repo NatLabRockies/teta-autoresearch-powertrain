@@ -35,6 +35,7 @@ which is where the physics puts them anyway.
 
 from __future__ import annotations
 
+import sys
 import time
 
 import numpy as np
@@ -103,10 +104,12 @@ LR = 1e-3
 WEIGHT_DECAY = 1e-4
 SEED = 0
 
-#: Safety net only. The epoch count is chosen to finish well inside the
-#: harness budget; this stops a run that somehow does not, so it reports a
-#: result instead of being killed.
-TRAIN_SECONDS_CAP = 470.0
+#: Safety net only. The epoch count is chosen to finish inside the harness
+#: budget; this stops a run that somehow does not, so it reports a result
+#: instead of being killed. Set well above the ~470s a full run takes at the
+#: slow end of the machine's ~2.4x load swing: a run that truncates here is
+#: not comparable to one that does not, so the cap must not bind in practice.
+TRAIN_SECONDS_CAP = 540.0
 
 # --- physical constants, read through `physics.py` so they cannot drift ---
 
@@ -428,8 +431,9 @@ def train_model() -> dict[str, float]:
     schedule = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=EPOCHS)
 
     n = x_tr.shape[0]
+    completed = 0
     generator = torch.Generator(device=device).manual_seed(SEED)
-    for _ in range(EPOCHS):
+    for completed in range(1, EPOCHS + 1):
         order = torch.randperm(n, device=device, generator=generator)
         for start in range(0, n, BATCH):
             idx = order[start : start + BATCH]
@@ -441,6 +445,10 @@ def train_model() -> dict[str, float]:
         schedule.step()
         if time.time() - t0 > TRAIN_SECONDS_CAP:
             break
+
+    # Whether the training-time cap bit. A truncated run is not comparable to
+    # an untruncated one, and the metrics alone cannot tell the difference.
+    print(f"epochs completed: {completed}/{EPOCHS}", file=sys.stderr)
 
     model.eval()
 
