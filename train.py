@@ -61,6 +61,7 @@ NET_FEATURES = [
     "prev_miles",
     "next_miles",
     "prev2_speed_mph",
+    "next2_speed_mph",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -139,6 +140,8 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     df["next_speed_mph"] = grouped.shift(-1).fillna(0.0)
     # Two links back: whether the vehicle was already slowing on its approach.
     df["prev2_speed_mph"] = grouped.shift(2).fillna(0.0)
+    # Two links forward: whether the braking continues past the next link.
+    df["next2_speed_mph"] = grouped.shift(-2).fillna(0.0)
     # How far the previous link ran, which is how much to trust its average
     # speed as an estimate of the speed at its end. Zero at a trip start, where
     # there is no previous link to distrust.
