@@ -176,3 +176,19 @@ Updated after each experiment. Format:
 - [x] exp43: corner-gated regen, third attempt -> rmse=0.005901, trip_rmse=0.002087 (discard, real trade)
 - [x] exp44: drop weight decay -> rmse=0.005916, trip_rmse=0.002090 (discard, earns its place)
 - [x] exp45: format-only cleanup -> rmse=0.005915, trip_rmse=0.002084 (keep, bit-identical)
+
+## Session outcome
+
+45 experiments, 13 keeps, ended after exp45 rather than running to the 50-experiment limit: the
+last eleven experiments produced no accuracy keep, and the remaining budget was worth more spent
+on `learnings.md` than on further probes of a closed frontier.
+
+- **Baseline** (`eeb388b`): rmse 0.013345, trip_rmse 0.003037, **physics_pass 0.0** (6/9 checks
+  failing, `climb_floor` 81%, implied drivetrain efficiency 1.29)
+- **Final** (`2b5c37e`): rmse **0.005915**, trip_rmse **0.002084**, **physics_pass 1.0**, every
+  violation rate 0.0
+- **−55.7% link RMSE, −31.4% trip RMSE, and illegal → legal**
+
+The three experiments that produced most of it were all structural rather than feature work:
+exp1 (the bounded road-load parametrization), exp7 (the signed transient, −26.2%/−14.9%) and
+exp31 (the length-dependent transient, −4.8%/−2.2%).

@@ -2,21 +2,21 @@
 
 - tree: `/home/nreinick/routee-autoresearch-runs/physics-bounded`
 - transcripts: `/home/nreinick/.claude/projects/-home-nreinick-routee-autoresearch-runs-physics-bounded`
-- captured: 2026-08-31T19:54:35-0600
-- session span: 2026-08-31T23:16:37.855Z → 2026-09-01T01:54:33.033Z
-- assistant messages: 124
+- captured: 2026-08-31T23:39:08-0600
+- session span: 2026-08-31T23:16:37.855Z → 2026-09-01T05:39:06.575Z
+- assistant messages: 221
 - transcript files: 1
 - window: records at or after `2026-08-31T16:43:53-06:00`
-- excluded: 100 record(s) predating the window (earlier sessions in this same tree path)
+- excluded: 170 record(s) predating the window (earlier sessions in this same tree path)
 
 ## Tool calls
 
 | tool | calls |
 | --- | --- |
-| `Bash` | 46 |
+| `Bash` | 83 |
 | `Edit` | 10 |
 | `Read` | 7 |
-| `Write` | 3 |
+| `Write` | 4 |
 | `AskUserQuestion` | 1 |
 
 ## Operator input
@@ -29,7 +29,7 @@ This experiment tree differs from those in that we introduce real physical const
 
 ## Paths touched outside the tree
 
-**19 distinct out-of-tree reference(s).** Each needs a look: a path outside the tree is how prior findings would enter an otherwise-isolated run. Extraction is best-effort and over-reports (a `/usr/bin` tool path counts), so read before concluding.
+**29 distinct out-of-tree reference(s).** Each needs a look: a path outside the tree is how prior findings would enter an otherwise-isolated run. Extraction is best-effort and over-reports (a `/usr/bin` tool path counts), so read before concluding.
 
 | tool | path |
 | --- | --- |
@@ -52,4 +52,14 @@ This experiment tree differs from those in that we introduce real physical const
 | `Bash` | `/EARTH_RADIUS_M` |
 | `Bash` | `/-2.2` |
 | `Bash` | `/-0.2` |
+| `Bash` | `/LR` |
+| `Bash` | `/-0.37` |
+| `Bash` | `/physics` |
+| `Bash` | `/-0.23` |
+| `Bash` | `/dev/null` |
+| `Bash` | `/-2.` |
+| `Bash` | `/-0.33` |
+| `Bash` | `/GRADE_SLACK_REF` |
+| `Bash` | `/0.05` |
+| `Bash` | `/WEIGHT_DECAY` |
 
