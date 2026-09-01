@@ -167,3 +167,4 @@ Updated after each experiment. Format:
 - [x] exp34: add prev2_miles -> rmse=0.005915, trip_rmse=0.002084 (keep, -0.10%/-0.33%)
 - [x] exp35: add next2_miles -> rmse=0.005935, trip_rmse=0.002093 (discard, both worse)
 - [x] exp36: climb-slack gate at 0.25% -> rmse=0.005937, trip_rmse=0.002098 (discard, both worse)
+- [x] exp37: corner-gated regen channel -> rmse=0.005900, trip_rmse=0.002087 (discard, 1.8:1 split)
