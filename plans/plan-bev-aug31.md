@@ -148,3 +148,4 @@ Updated after each experiment. Format:
 - [x] exp15: widen 128 -> 256 -> rmse=0.006530, trip_rmse=0.002204 (discard, metrics split)
 - [x] exp16: epochs 300 -> 150 -> rmse=0.006508, trip_rmse=0.002247 (discard, both worse)
 - [x] exp17: add entry_kinetic_gge -> rmse=0.006466, trip_rmse=0.002215 (keep, -0.19%/-0.14%)
+- [x] exp18: add sinuosity -> rmse=0.006346, trip_rmse=0.002166 (keep, -1.9%/-2.2%)
