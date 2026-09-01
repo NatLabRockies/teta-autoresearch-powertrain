@@ -69,6 +69,7 @@ NET_FEATURES = [
     "sinuosity",
     "junction_turn_degrees",
     "prev_sinuosity",
+    "next_junction_turn_degrees",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -238,6 +239,14 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
         df.drop(columns=["_exit_bearing"], inplace=True)
     else:
         df["junction_turn_degrees"] = np.zeros(len(df))
+    # The turn waiting at the *end* of this link, which is the turn recorded
+    # against the next one. A sharp turn ahead is braking that happens during
+    # this link and is billed to it.
+    df["next_junction_turn_degrees"] = (
+        df.groupby("journey_id", sort=False)["junction_turn_degrees"]
+        .shift(-1)
+        .fillna(0.0)
+    )
     # The shape of the road behind: a winding approach means the vehicle
     # arrives having already given up speed to corner.
     df["prev_sinuosity"] = (
