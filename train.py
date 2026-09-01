@@ -365,30 +365,11 @@ class PhysicsNet(nn.Module):
         #
         # Gated by grade so the headroom vanishes on level ground, where there
         # is no climb to spend it on.
-        def climb_cost(magnitude: Tensor) -> Tensor:
-            """What a climb of this grade magnitude costs, per mile."""
-            slack = (ceiling - rate_flat) * torch.clamp(
-                magnitude / GRADE_SLACK_REF, max=1.0
-            )
-            return K_POT * magnitude + torch.sigmoid(b) * (
-                K_POT * magnitude * (1.0 / ETA - 1.0) + slack
-            )
-
-        climb_side = climb_cost(up)
-        # The descent saving, in the saturating shape `regen_ceiling` itself
-        # uses rather than a straight line in grade. A descent recovers the
-        # road-load work it no longer has to spend, at 1/eta, plus whatever
-        # height is left over at the regen efficiency eta - and since eta < 1,
-        # the marginal return falls once the hill is steeper than the road load
-        # it offsets. A linear `C * g` cannot bend there.
-        #
-        # Capped by the climb cost at the *same grade magnitude*, which is what
-        # `round_trip_convexity` compares: a descent may not give back more
-        # than the matching climb spent, or the pair would beat flat ground.
-        potential = K_POT * down
-        recoverable = torch.minimum(resistance, potential)
-        max_saving = recoverable / ETA + ETA * (potential - recoverable)
-        descend = torch.sigmoid(c) * torch.minimum(max_saving, climb_cost(down))
+        slack = (ceiling - rate_flat) * torch.clamp(up / GRADE_SLACK_REF, max=1.0)
+        climb = K_POT * up + torch.sigmoid(b) * (
+            K_POT * up * (1.0 / ETA - 1.0) + slack
+        )
+        descend = ETA * K_POT * torch.sigmoid(c)
 
         # The fixed per-link cost, in two signed halves. `T+` is the
         # acceleration energy a link average hides; `T-` is the kinetic energy
@@ -408,7 +389,7 @@ class PhysicsNet(nn.Module):
             released, ETA * transient
         )
 
-        return rate_flat + climb_side - descend + fixed / miles
+        return rate_flat + climb - descend * down + fixed / miles
 
 
 def _columns(df: pd.DataFrame, device: torch.device) -> tuple[Tensor, Tensor]:
