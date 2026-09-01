@@ -173,3 +173,4 @@ Updated after each experiment. Format:
 - [x] exp40: control re-run of incumbent -> bit-identical metrics (keep, variance is zero at matched epochs)
 - [x] exp41: corner-gated regen re-test -> rmse=0.005901, trip_rmse=0.002089 (discard, truncated 269/300, unresolved)
 - [x] exp42: add next_sinuosity -> rmse=0.005919, trip_rmse=0.002085 (discard, tie)
+- [x] exp43: corner-gated regen, third attempt -> rmse=0.005901, trip_rmse=0.002087 (discard, real trade)
