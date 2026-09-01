@@ -59,6 +59,7 @@ NET_FEATURES = [
     "prev_speed_mph",
     "next_speed_mph",
     "prev_miles",
+    "next_miles",
 ]
 
 #: Consumed by the structural algebra rather than by the network. The
@@ -138,7 +139,9 @@ def add_features(df: pd.DataFrame) -> pd.DataFrame:
     # How far the previous link ran, which is how much to trust its average
     # speed as an estimate of the speed at its end. Zero at a trip start, where
     # there is no previous link to distrust.
-    df["prev_miles"] = df.groupby("journey_id", sort=False)["miles"].shift(1).fillna(0.0)
+    length = df.groupby("journey_id", sort=False)["miles"]
+    df["prev_miles"] = length.shift(1).fillna(0.0)
+    df["next_miles"] = length.shift(-1).fillna(0.0)
     return df
 
 
