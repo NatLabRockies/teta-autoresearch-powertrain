@@ -110,12 +110,13 @@ The domain-guided model is **657× faster** and acceptable for continental-scale
 
 ## Archive Layout
 
-```
-data/                 dataset notes — the data itself lives outside any git repo
-unguided/             imported tree, full history; see [unguided/PROVENANCE.md](unguided/PROVENANCE.md)
-domain-guided/        imported tree, full history; see [domain-guided/PROVENANCE.md](domain-guided/PROVENANCE.md)
-audit/                independent scoring of both sessions' final models; see [audit/README.md](audit/README.md)
-```
+directory | description
+--- | ---
+data/ | dataset notes — the data itself lives outside any git repo
+unguided/ | imported tree, full history; see [unguided/PROVENANCE.md](unguided/PROVENANCE.md)
+domain-guided/ | imported tree, full history; see [domain-guided/PROVENANCE.md](domain-guided/PROVENANCE.md)
+audit/        | independent scoring of both sessions' final models; see [audit/README.md](audit/README.md)
+
 
 Each session carries its own provenance record ([unguided/PROVENANCE.md](unguided/PROVENANCE.md) and [domain-guided/PROVENANCE.md](domain-guided/PROVENANCE.md)) detailing scaffold commits, prompts, dataset checksums, and isolation boundaries. Full audit definitions and reproduction steps are documented in [audit/README.md](audit/README.md) and [audit/results/report.md](audit/results/report.md).
 
