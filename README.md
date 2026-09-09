@@ -102,9 +102,9 @@ Comparing deployable models directly, the domain-guided model defeated the retra
 
 ### 3. Inference Cost is the Dominant Practical Driver
 In RouteE Compass, shortest-path searches evaluate link energy millions of times:
-- `domain-guided`: **1.45 $\mu$s per link** (1.4 s for 1M traversals; 0.2 MB serialized model).
-- `unguided/retrained-contract`: **950.7 $\mu$s per link** (951 s for 1M traversals; 35.5 MB model).  
-The domain-guided model is **657× faster**, making graph search viable.
+- `domain-guided`: **1.45 microseconds per link** (1.4 s for 1M traversals; 0.2 MB serialized model).
+- `unguided/retrained-contract`: **950.7 microseconds per link** (951 s for 1M traversals; 35.5 MB model).  
+The domain-guided model is **657× faster** and acceptable for continental-scale energy-aware graph search.
 
 ---
 
