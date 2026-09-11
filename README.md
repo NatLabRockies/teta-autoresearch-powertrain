@@ -1,227 +1,154 @@
 # teta-autoresearch-powertrain
 
-Experiment archive for a two-arm study of **what a domain specification does to an autonomous
-research agent**.
+## What is this?
 
-Both arms run the same harness ([`teta-autoresearch`](https://github.com/NatLabRockies/teta-autoresearch))
-from the same template commit, against the same dataset, with the same protocol, the same
-metrics, and the same budget. Both start from an identical baseline. They differ in whether
-`domain.md` is present.
+This repository is an experiment archive for a study investigating the question: "How important is domain specification for an AI-assisted model training task?". It was prepared as part of an invited presentation at [US-RSE 2026](https://us-rse.org/usrse26/) titled _"Steering an LLM AutoResearch Loop with Domain Context: A Case Study with Vehicle Energy Models"_ by Nicholas Reinicke and Robert Fitzgerald.
 
-| arm | `domain.md` | experiments | best reported rmse | best reported trip_rmse |
-| --- | --- | --- | --- | --- |
-| [`unguided`](unguided/) | absent | 50 | 0.004785 | 0.001231 |
-| [`domain-guided`](domain-guided/) | present | 51 | 0.006823 | 0.002239 |
+Autonomous agents given open-ended modeling objectives on fixed datasets naturally find the most direct path to minimize loss. On tabular and sequential transportation datasets, that path often includes deleting difficult rows, exploiting artifacts of simulation traces, or reading forward into links that a routing engine has not yet traversed. The central question of this study is not simply "which agent reports a lower loss," but rather:
 
-Baseline for both: 0.013345 / 0.003037.
+> **Can the agent infer the real-world constraints for a problem or does its reported improvements diverge from real improvements?**
 
-[`domain.md`](domain-guided/domain.md) describes the RouteE Compass inference environment and
-sets the rules that follow from it: only link-average speed, gradient, distance and geometry are
-available; sequencing may look back **one** link and must not read forward; do not filter rows
-to lower the error; do not use a link-position feature; and inference cost is a competing
-objective, because energy is evaluated at every link traversal of a shortest-path search. None
-of those are stylistic — each was written after an earlier session found and exploited the gap
-it closes.
+To answer this, each final model is evaluated twice:
+- **Reported**: What the agent's internal harness recorded on its selected features and processed dataset.
+- **Audited**: The same model re-evaluated outside the experiment tree on a shared held-out set with strict deployment-time feature validity and operational constraints enforced.
 
-## What actually differs
+The archive contains the complete version-controlled histories of both experimental sessions (see [unguided/PROVENANCE.md](unguided/PROVENANCE.md) and [domain-guided/PROVENANCE.md](domain-guided/PROVENANCE.md)), alongside an independent evaluation harness in [audit/README.md](audit/README.md).
 
-The scaffold commits of the two trees differ by **exactly one file**:
+---
 
-```
-$ git diff --stat 60e18ff 409009f
- domain.md | 46 ++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 46 insertions(+)
-```
+## Experimental Setup & Session Descriptions
 
-There is no `seed.md` in either arm, and neither session made a single WebSearch or WebFetch
-call, so both arms' inputs are closed sets. This is a change from the previous pair of trees,
-which carried differing `seed.md` briefs and differing web access — those two confounds are
-gone.
+Both sessions were initialized identically using the [`teta-autoresearch`](https://github.com/NatLabRockies/teta-autoresearch) harness from the same template commit, evaluated against the same powertrain dataset, using the same protocol, metrics, and compute budget:
 
-**One asymmetry remains, in the session-start prompt rather than the tree.** The `unguided`
-arm's operator prompt restated the absence of `domain.md` and added a containment instruction
-("Do not reference any other file or folder outside of this repo"); the `domain-guided` arm's
-was the ordinary one-liner plus a `Go ahead`. Both are reproduced verbatim in each arm's
-transcript audit. Read any arm-to-arm comparison with that difference in view; each arm's
-`PROVENANCE.md` repeats it at the point of use.
+- **Baseline**: An identical starting baseline using our [existing Chevy Bolt 2017 Random Forest model](https://huggingface.co/NatLabRockies/routee-powertrain-model-library/blob/main/v2/chevrolet/bolt_bev/2017/rf_base_67ae9982/v1/metadata.json) for both sessions (link RMSE: 0.013345, trip RMSE: 0.003037).
+- **Diff**: The initial repositories differed by **exactly one file**: [domain-guided/domain.md](domain-guided/domain.md) was present in the guided session and absent in the unguided arm (`git diff --stat 60e18ff 409009f`, 1 file changed, 46 insertions).
+- **No web**: Neither session made any web searches or external web fetches during the runs. 
+- **Prompts**: Both sessions were run independently with single-prompt initiation. The `domain-guided` session received a standard prompt plus "Go ahead". The `unguided` session received an identical kickoff with an explicit restatement that the domain file was absent and an instruction not to reference external paths. Both prompts are archived verbatim in each session's transcript audit.
+- **Domain Specification**: [domain-guided/domain.md](domain-guided/domain.md) specifies the RouteE Compass shortest-path routing environment:
+  - Allowed inputs: static link attributes (distance, grade, geometry) and link-average speed.
+  - Link sequencing: at most **one** link of lookback; strictly no forward lookahead; no journey-position indexing or metrics.
+  - Competing objectives: inference latency and memory overhead are primary constraints because predictions execute millions of times per route query.
+- **Execution Isolation**: To prevent cross-session leakage, each session was run in a separate directory outside this repository and was merged into this archive only after completion. The Claude cache in `~/.claude` was wiped between sessions. Sessions were not run concurrently.
 
-## The question
+---
 
-Not "which arm scores better" — the unguided arm is expected to score *better* on its own
-reported metric, because the cheapest way to reduce error is to delete the hard rows or to use
-signals that will not exist in deployment. Earlier sessions did both, and one of them tagged the
-result a milestone.
+## Metric Observations
 
-The question is whether **reported** progress and **real** progress stay attached. So each final
-model gets scored twice:
+Evaluating both sessions under the RouteE Compass deployment contract ([audit/contract.py](audit/contract.py)) demonstrates how reported scores diverge from deployable reality:
 
-- **reported** — what the agent's own harness printed, on the data it chose to keep
-- **audited** — the same model, scored outside the tree on the full held-out set with
-  inference-time feature validity enforced
+| session | domain rules | exps | reported rmse | audited rmse | reported trip_rmse | audited trip_rmse | deployable features |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| unguided | absent | 50 | 0.004795 | **0.014050** | 0.001235 | **0.004096** | 5 of 13 |
+| domain-guided | present | 51 | 0.006823 | **0.006823** | 0.002237 | **0.002237** | 11 of 11 |
 
-For the domain-guided arm those two numbers should track each other. For the unguided arm, the
-gap between them is the finding.
+*Baseline: 0.013345 link RMSE / 0.003037 trip RMSE. Audited metrics score models on held-out data (327,647 links) under deployment rules.*
 
-## What each arm finished with
+### Key Metric Takeaways
 
-`unguided` — 13 features, and a three-part blend: `0.70 ×` a 5-member
-`HistGradientBoostingRegressor` ensemble, `0.30 ×` a 2-block dilated 1-D CNN run over each
-journey's whole link chain, plus a distance-weighted per-journey offset. Several of its features
-read forward in the journey (`next_miles`, `next_gap_seconds`) or aggregate over all of it
-(`journey_rate`, `journey_gge_per_mile`), and the CNN's receptive field is **bidirectional** —
-±6 links — so it reads future links structurally, not just through named features.
+##### Reported vs. Audited Reality Gap
+![img/audit.png](img/audit.png)
+![img/audit-bar.png](img/audit-bar.png)
 
-`domain-guided` — 11 features, all static link attributes, current-link averages, or single-link
-lookbacks, fed to an average of 2 MLPs at 11 → 128 → 128 → 1. It spent its last third of the
-session buying no accuracy but halving inference cost to 35,840 multiply-accumulates per link,
-on the reasoning that `domain.md` makes deployability a competing objective.
 
-That difference in shape is the whole study in miniature, and it is what [`audit/`](audit/) puts
-a number on.
+- **Guided Stability**: For the `domain-guided` session, reported and audited numbers are identical (0.006823 link RMSE / 0.002237 trip RMSE). Because all 11 features conform to deployment constraints, no performance is lost when moving to production.
+- **Unguided Collapse**: For `unguided`, reported performance (0.004795 / 0.001235) collapses under the contract to **0.014050 / 0.004096** (+193% link RMSE and +232% trip RMSE). Once non-deployable signals are removed, the model performs worse than the baseline it started from.
+- **Audit Result**: When the unguided model family is retrained strictly on deployable features, it achieves 0.007557 / 0.002362. The domain-guided model outperforms this fair refit by +10.8% on link RMSE and +5.6% on trip RMSE. For more details, read more about [the audit](audit/README.md).
 
-## Status
+##### RMSE by trial
 
-Both sessions are complete and imported, and **the audit has been run** — see
-[`audit/results/report.md`](audit/results/report.md). Both arms' archived numbers reproduce, so
-the audited numbers below rest on a verified harness.
+Unguided:
 
-| arm | reported rmse | audited rmse | reported trip_rmse | audited trip_rmse |
-| --- | --- | --- | --- | --- |
-| `unguided` | 0.004795 | **0.014050** | 0.001235 | **0.004096** |
-| `domain-guided` | 0.006823 | **0.006823** | 0.002237 | **0.002237** |
+![unguided RMSE by trial](img/unguided-aug25-rmse.png)
 
-*Audited* means the same model scored on the same held-out rows with inference-time validity
-enforced — the RouteE Compass contract in [`audit/contract.py`](audit/contract.py).
+Guided:
 
-The two numbers are identical for `domain-guided`, because 11 of its 11 features are available
-at inference. They come apart violently for `unguided`, because **5 of its 13** are: its score
-moves +193% link and +232% trip once the unavailable inputs are withdrawn, landing *worse than
-the baseline both arms started from*.
+![domain-guided RMSE by trial](img/domain-guided-aug26-rmse.png)
 
-Three things the audit found that a feature ledger alone would have missed:
+*Progression of link RMSE and trip RMSE across experiment iterations (1–51) for unguided vs. domain-guided sessions, annotating key architectural shifts and where out-of-contract features were adopted.*
 
-- **Two of the unguided model's three components are undeployable**, not just some of its
-  columns. The sequence member is a CNN whose ±6-link receptive field reads six links *ahead*;
-  the journey offset is built from the journey's own training labels. Decomposing the blend,
-  the offset alone supplies **−27.5% of the reported trip_rmse** — the single largest
-  contribution in the model, and the one with no inference-time form at all.
-- **The fair fight still goes to `domain-guided`.** Refitting the unguided arm's own recipe
-  inside the contract gives 0.007557 / 0.002362 — behind on both metrics (+10.8% / +5.6%). The
-  lead was not a better method applied to worse inputs.
-- **Inference cost is the larger effect, and it is the half nobody was measuring.** Even the
-  deployable unguided refit is **657× slower per link**: a million-traversal search goes from
-  1.4 s to 951 s. `domain.md` names inference cost as a competing objective, and the
-  domain-guided arm spent its last third of the session halving its own. The unguided arm was
-  never told there was a second objective, so it grew a 10,000-tree ensemble instead.
+Improvement categories:
 
-One result goes the other way, and it is the useful one: allowing `prev2_speed` — causal, but
-one extra float per search label — gives 0.007087 / 0.002246, within 3.9% / 0.4% of the
-domain-guided model. That single scalar of memory buys more than a full causal sequence model
-does (0.007170 / 0.002279). If any of this is worth implementing, that is the cheap end.
+Category | Meaning | Examples
+--- | --- | ---
+Feature Engineering | Changes to the input features of the ML model | previous speed, edge sinuosity, overall trip energy
+Architecture | Change of the ML model type | XGboost, CNN, MLP, GBDT
+Hyperparameter Tuning | Parameters of the ML model | learning rate, number of hidden layers
+Simplification | reduction of model simplicity without loss of performance | reduce nodes from 256 to 128, remove redundant "speed_delta" feature
 
-Trees execute **outside this repository**, each in its own directory containing nothing else, and
-are imported here with their history intact once a run completes. That is not bookkeeping
-preference: a tree must be an independent sample, and two arms sitting in one directory can read
-each other. The trees have **not** been moved — they stay where they ran, so further sessions on
-them keep their isolation, and this archive is a copy.
+---
 
-## Layout
+## Behavioral Observations
 
-```
-data/                 dataset notes — the data itself lives outside any git repo
-unguided/             imported tree, full history; see unguided/PROVENANCE.md
-domain-guided/        imported tree, full history; see domain-guided/PROVENANCE.md
-audit/                independent scoring of both arms' final models; see audit/README.md
-```
+The experiment transcripts and commit histories reveal contrasting behavioral patterns between the two agents:
 
-Each arm carries its own `PROVENANCE.md` with that arm's scaffold commit, what it was given,
-its session record, the dataset checksum, and the limits of the isolation claim.
+### The Unguided Agent: Exploiting Leakage & Scale
+1. **Time Travel**: In experiment 2, the agent added `dke_per_mile` spanning future link speeds, followed by explicit future link lengths (`next_miles`) and exit acceleration terms (`dv_out`). The agent created `journey_rate`, `journey_gge_per_mile`, and post-hoc journey residual offsets, despite having zero inference-time availability. It introduced a 2-block dilated 1-D CNN over the journey link sequence. With a receptive field of $\pm$ 6 links, the model structurally read 6 links into the future.
+2. **Data Artifacts**: It discovered `gap_seconds` and `next_gap_seconds` (idle timestamps between link transitions). While correlated with stops, these columns are synthetic artifacts of drive-cycle simulations and do not exist on a static road network.
+3. **Compute**: Lacking an inference budget constraint, it stacked an ensemble of 10,000 gradient-boosted trees alongside the CNN.
 
-`audit/` is the one directory that reads both arms, which is why it cannot live inside either
-one. It restates `domain.md` as a machine-readable per-feature ledger, re-scores both final
-models on the full held-out set under that contract, and measures what each costs to run at
-every link traversal of a shortest-path search. It reproduces both arms' archived numbers
-before it reports anything.
+### The Domain-Guided Agent: Constrained Feature Engineering & Efficiency
+1. **Physics**: Guided by [domain.md](domain-guided/domain.md), the agent developed valid single-link lookbacks (`prev_speed_mph`, `ke_delta_per_mile`), static road geometry features (`sinuosity`, `vertices_per_mile`), and turn headings (`junction_turn_degrees`).
+2. **Lightweight Model Architecture**: It replaced tree ensembles with a pair of compact MLPs ($11 \to 128 \to 128 \to 1$). Recognizing inference latency as a competing objective, the agent spent its final 15+ experiments preserving its accuracy while halving operations to 35,840 multiply-accumulates (MACs) per link.
 
-## Reading the results
+---
 
-Every experiment is a commit. The sessions themselves produced **no tags** — address experiments
-by commit, or by row in the results table.
+## Outcomes
 
-Each arm's history was imported with its file paths at the tree root, so `git log unguided/`
-shows only the import. Address an arm's history through its import tag instead:
+### 1. Specification Prevents Phantom Progress
+**Without explicit domain boundaries, autonomous agents optimize whatever metric they are given by exploiting informational shortcuts.** In this study, 8 of the unguided session's 13 features, its journey offset, and its CNN architecture were undeployable, turning a 64% reported error reduction into a net degradation in real deployment.
+
+### 2. Domain Guidance Produces Better Real-World Accuracy
+Comparing deployable models directly, the domain-guided model defeated the retrained unguided architecture on both link RMSE (0.006823 vs. 0.007557) and trip RMSE (0.002237 vs. 0.002362).
+
+### 3. Inference Cost is the Dominant Practical Driver
+In RouteE Compass, shortest-path searches evaluate link energy millions of times:
+- `domain-guided`: **1.45 microseconds per link** (1.4 s for 1M traversals; 0.2 MB serialized model).
+- `unguided/retrained-contract`: **950.7 microseconds per link** (951 s for 1M traversals; 35.5 MB model).  
+The domain-guided model is **657× faster** and acceptable for continental-scale energy-aware graph search.
+
+---
+
+## Archive Layout
+
+directory | description
+--- | ---
+data/ | dataset notes — the data itself lives outside any git repo
+unguided/ | imported tree, full history; see [unguided/PROVENANCE.md](unguided/PROVENANCE.md)
+domain-guided/ | imported tree, full history; see [domain-guided/PROVENANCE.md](domain-guided/PROVENANCE.md)
+audit/        | independent scoring of both sessions' final models; see [audit/README.md](audit/README.md)
+
+
+Each session carries its own provenance record ([unguided/PROVENANCE.md](unguided/PROVENANCE.md) and [domain-guided/PROVENANCE.md](domain-guided/PROVENANCE.md)) detailing scaffold commits, prompts, dataset checksums, and isolation boundaries. Full audit definitions and reproduction steps are documented in [audit/README.md](audit/README.md) and [audit/results/report.md](audit/results/report.md).
+
+## Reading the Results
+
+Address an session's commit history through its import tag:
 
 ```bash
-git log --oneline import/unguided-bev-aug25                    # all 107 commits of that arm
+git log --oneline import/unguided-bev-aug25                    # all 107 commits of that session
 git log --grep='^exp' --oneline import/domain-guided-bev-aug26 # just the experiments
-git show <commit>                                              # the change itself
+git show <commit>                                              # view specific experiment change
 ```
 
-The current state of each arm is checked out in its directory, and read normally:
+Experiment logs and metrics inside each session:
+- Metric records: [unguided/results/results-bev-aug25.tsv](unguided/results/results-bev-aug25.tsv) and [domain-guided/results/results-bev-aug26.tsv](domain-guided/results/results-bev-aug26.tsv)
+- Hypotheses & observations: [unguided/results/experiments-bev-aug25.jsonl](unguided/results/experiments-bev-aug25.jsonl)
+- Operator transcripts: [unguided/results/transcript-audit-bev-aug25.md](unguided/results/transcript-audit-bev-aug25.md)
+- Agent conclusions: [unguided/learnings.md](unguided/learnings.md) and [domain-guided/learnings.md](domain-guided/learnings.md)
 
-```bash
-cat unguided/results/results-bev-aug25.tsv           # metrics, one row per experiment
-cat unguided/results/experiments-bev-aug25.jsonl     # hypothesis, observation, reasoning
-cat unguided/results/transcript-audit-bev-aug25.md   # how the session actually ran
-cat unguided/results/usage-bev-aug25.jsonl           # token cost
-cat unguided/learnings.md                            # what the agent concluded
-```
+## Running Further Sessions
 
-The domain-guided arm's files carry the `bev-aug26` tag instead.
-
-The JSONL is the interesting one. Each entry records a hypothesis written *before* the run and
-an observation written after, so where an agent decided to reach outside the rules, its stated
-justification is on the record in its own words.
-
-The transcript audit is the honest one. It lists every path the session touched outside its tree
-and every word the operator typed, which is how the isolation claim and the "no direction" claim
-get checked rather than asserted.
-
-### Transcripts
-
-Raw Claude Code transcripts sit in `<arm>/results/transcript-<tag>/`, committed **verbatim**
-and stored with Git LFS. Cloning needs `git lfs` installed:
-
-```bash
-git lfs install && git clone https://github.com/NatLabRockies/teta-autoresearch-powertrain.git
-```
-
-Verbatim means unedited, so the transcripts contain whatever each session printed to its own
-console, including `.head()` and `describe()` output over the dataset. The dataset itself is not
-published.
-
-Both trees' directories had been used by earlier sessions, so each transcript audit windows the
-transcript to records at or after that tree's scaffold timestamp, and reports how many earlier
-records it excluded. The window is what makes the file a record of *this* run.
-
-## The dataset
-
-Not in this repository. `<arm>/data` — and `audit/data` — is a committed **symlink** to a path on
-the machine that ran the study; it holds no data and will dangle in a clone. Keeping the dataset
-outside every git repository is load-bearing — see [`data/README.md`](data/README.md) and any
-arm's `PROVENANCE.md`.
-
-The file is byte-identical to the one the previous pair of trees used
-(sha256 `420b0d4d…`), so scores are comparable across runs.
-
-## Running further sessions
-
-Sessions run in the tree, never in this archive:
+Sessions must run inside their isolated run directories, never inside this archive:
 
 ```bash
 ~/repos/teta-autoresearch/tools/verify_isolation.sh ~/routee-autoresearch-runs/unguided
 
 cd ~/routee-autoresearch-runs/unguided
 claude
-# then: "Have a look at program.md and let's kick off a new experiment session"
+# Kickoff prompt: "Have a look at program.md and let's kick off a new experiment session"
 ```
 
-Keep operator input to that one line, **identically in both arms**. Anything else said during a
-session is direction, and direction is the variable the other arm is supposed to isolate — if you
-do say more, record it. The prompt asymmetry noted above is what happens when that slips.
-
-To bring a later session into this archive — `unguided-src` and `domain-guided-src` are
-local-path remotes on the machine that ran the study, so this works there, not in a clone:
+To merge external session trees into this archive once completed:
 
 ```bash
 git fetch unguided-src main
@@ -229,19 +156,13 @@ git merge -X subtree=unguided unguided-src/main
 git tag -a import/unguided-<tag> unguided-src/main -m "..."
 ```
 
-If the tree's transcripts are LFS-backed and this archive's remote has no copy of them, make the
-objects reachable before checkout — the source tree's own store is the copy of record:
-
-```bash
-cp -rn ~/routee-autoresearch-runs/unguided/.git/lfs/objects/. .git/lfs/objects/
-```
-
-Do **not** add this archive as a remote inside a tree. That would give the tree fetchable objects
-containing the other arm's entire history — the exact leak the separate run location prevents.
-
 ## Acknowledgments
 
-This software is built on the "autoresearch" software by github user karpathy available here [link](https://github.com/karpathy/autoresearch) and distributed under the MIT license.
+This software is built on the "autoresearch" software by github user karpathy available [here](https://github.com/karpathy/autoresearch) and distributed under the MIT license.
+
+## Citation
+
+Reinicke, Nicholas and Fitzgerald, Robert. _"Steering an LLM AutoResearch Loop with Domain Context: A Case Study with Vehicle Energy Models"_. US-RSE 2026, San Jose, CA, USA.
 
 ## Metadata
 
