@@ -2,7 +2,7 @@
 
 ## What is this?
 
-This repository is an experiment archive for a study investigating the question: "How important is domain specification for an AI-assisted model training task?". It was prepared as part of an invited presentation at [US-RSE 2026](https://us-rse.org/usrse26/) titled _"Steering an LLM AutoResearch Loop with Domain Context: A Case Study with Vehicle Energy Models"_ by Nicholas Reinicke and Robert Fitzgerald.
+This repository is an experiment archive for a study investigating the question: "How important is domain specification for an AI-assisted model training task?". It was prepared as part of an invited presentation at [US-RSE 2026](https://us-rse.org/usrse26/) titled _"Steering an LLM AutoResearch Loop with Domain Context: A Case Study with Vehicle Energy Models"_ by Nicholas Reinicke and Robert Fitzgerald ([link to abstract](https://us-rse.org/usrse26/program/talks/#steering-an-llm-autoresearch-loop-with-domain-context-a-case-study-with-vehicle-energy-models)).
 
 Autonomous agents given open-ended modeling objectives on fixed datasets naturally find the most direct path to minimize loss. On tabular and sequential transportation datasets, that path often includes deleting difficult rows, exploiting artifacts of simulation traces, or reading forward into links that a routing engine has not yet traversed. The central question of this study is not simply "which agent reports a lower loss," but rather:
 
