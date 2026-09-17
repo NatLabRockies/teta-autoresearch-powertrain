@@ -17,6 +17,7 @@ from pathlib import Path
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.font_manager as fm  # noqa: E402
 import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.patches import Patch  # noqa: E402
 
@@ -39,9 +40,14 @@ MUTED = "#898781"
 AXIS = "#c3c2b7"
 SURFACE = "#ffffff"
 
+#: Preferred typeface, then fallbacks. Avenir ships with macOS; on a host
+#: without it the next installed family is used and a note is printed.
+FONTS = ["Avenir", "Avenir Next", "DejaVu Sans"]
+
 plt.rcParams.update(
     {
         "font.family": "sans-serif",
+        "font.sans-serif": FONTS,
         "font.size": 11,
         "figure.facecolor": SURFACE,
         "axes.facecolor": SURFACE,
@@ -222,6 +228,10 @@ def inference_figure(inf: dict):
 
 def main() -> None:
     IMG.mkdir(exist_ok=True)
+    installed = {f.name for f in fm.fontManager.ttflist}
+    if FONTS[0] not in installed:
+        have = next((f for f in FONTS if f in installed), "matplotlib default")
+        print(f"note: {FONTS[0]} is not installed here; using {have}")
     acc = json.loads((RESULTS / "accuracy.json").read_text())
     error_figure(acc).savefig(IMG / "audit-error.png")
     print(f"wrote {IMG / 'audit-error.png'}")
