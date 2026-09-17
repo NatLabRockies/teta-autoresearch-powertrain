@@ -2,123 +2,33 @@
   "conditions": {
     "device": "cpu",
     "threads": 1,
-    "note": "single-threaded CPU, matching one Compass search thread. Timings are Python-harness timings; the arithmetic and label-state figures are the language-independent ones.",
     "torch_version": "2.10.0"
   },
-  "latency_us_per_link": {
+  "what": {
+    "unguided/as-run": "10,000 boosted trees (5 seeds x 2,000 trees)",
+    "unguided/retrained": "10,000 boosted trees (5 seeds x 2,000 trees)",
+    "domain-guided": "2 MLPs, 11 -> 128 -> 128 -> 1"
+  },
+  "us_per_link": {
     "1": {
-      "unguided/as-run": 161859.723,
-      "unguided/retrained-contract": 182053.919,
-      "domain-guided": 253.027,
-      "ratio_contract_over_dg": 719.5
-    },
-    "8": {
-      "unguided/as-run": 21423.298,
-      "unguided/retrained-contract": 21448.239,
-      "domain-guided": 34.391,
-      "ratio_contract_over_dg": 623.7
+      "unguided/as-run": 159875.912,
+      "unguided/retrained": 160167.933,
+      "domain-guided": 254.089
     },
     "64": {
-      "unguided/as-run": 2827.138,
-      "unguided/retrained-contract": 2858.551,
-      "domain-guided": 4.972,
-      "ratio_contract_over_dg": 574.9
+      "unguided/as-run": 2800.316,
+      "unguided/retrained": 2931.876,
+      "domain-guided": 5.108
     },
     "512": {
-      "unguided/as-run": 927.864,
-      "unguided/retrained-contract": 950.732,
-      "domain-guided": 1.447,
-      "ratio_contract_over_dg": 657.1
+      "unguided/as-run": 925.659,
+      "unguided/retrained": 944.673,
+      "domain-guided": 1.45
     },
     "4096": {
-      "unguided/as-run": 625.821,
-      "unguided/retrained-contract": 642.655,
-      "domain-guided": 1.141,
-      "ratio_contract_over_dg": 563.1
-    },
-    "65536": {
-      "unguided/as-run": 536.504,
-      "unguided/retrained-contract": 552.589,
-      "domain-guided": 3.651,
-      "ratio_contract_over_dg": 151.4
-    }
-  },
-  "arithmetic": {
-    "unguided/as-run": {
-      "form": "10,000 boosted trees (5 seeds averaged)",
-      "n_trees": 10000,
-      "mean_leaves_per_tree": 31.0,
-      "max_tree_depth": 20,
-      "node_visits_per_prediction_lower": 49541,
-      "node_visits_per_prediction_upper": 200000
-    },
-    "unguided/retrained-contract": {
-      "form": "10,000 boosted trees (5 seeds averaged)",
-      "n_trees": 10000,
-      "mean_leaves_per_tree": 31.0,
-      "max_tree_depth": 24,
-      "node_visits_per_prediction_lower": 49541,
-      "node_visits_per_prediction_upper": 240000
-    },
-    "unguided/sequence-member": {
-      "form": "2-block dilated 1-D CNN, 64 channels, kernel 5, dilations (1, 2)",
-      "multiply_accumulates_per_link": 49920,
-      "receptive_half_width_links": 6
-    },
-    "domain-guided": {
-      "form": "2 x (11 -> 128 -> 128 -> 1), ReLU",
-      "n_params": 36354,
-      "multiply_accumulates_per_prediction": 35840,
-      "flops_per_prediction": 71680
-    }
-  },
-  "label_state": {
-    "domain-guided": {
-      "extra_floats_per_label": 0,
-      "detail": "all 11 features derive from the current edge and the previous edge id, which the search label already carries"
-    },
-    "unguided/as-run": {
-      "extra_floats_per_label": null,
-      "detail": "not implementable at any memory cost. next_miles, next_gap_seconds and dv_out need links the search has not chosen; gap_seconds exists only in the simulated trace; journey_rate and journey_gge_per_mile are means of the target. The sequence member reads 6 links AHEAD as well as behind, and the journey offset needs labels."
-    },
-    "unguided/retrained-contract": {
-      "extra_floats_per_label": 0,
-      "detail": "the 5 deployable features only (speed_mph, grade_percent, miles, dke_in_link, prev_miles) \u2014 same label cost as domain-guided"
-    },
-    "unguided/retrained-state": {
-      "extra_floats_per_label": 1,
-      "detail": "adds prev2_speed: one extra float per label, and labels differing only in the speed two links back can no longer be merged"
-    }
-  },
-  "model_size_bytes": {
-    "unguided/as-run": 35656040,
-    "unguided/retrained-contract": 35482538,
-    "domain-guided": 151109
-  },
-  "search_wall_clock_seconds": {
-    "100000": {
-      "unbatched": {
-        "unguided/as-run": 16185.972,
-        "unguided/retrained-contract": 18205.392,
-        "domain-guided": 25.303
-      },
-      "batched_512": {
-        "unguided/as-run": 92.786,
-        "unguided/retrained-contract": 95.073,
-        "domain-guided": 0.145
-      }
-    },
-    "1000000": {
-      "unbatched": {
-        "unguided/as-run": 161859.723,
-        "unguided/retrained-contract": 182053.919,
-        "domain-guided": 253.027
-      },
-      "batched_512": {
-        "unguided/as-run": 927.864,
-        "unguided/retrained-contract": 950.732,
-        "domain-guided": 1.447
-      }
+      "unguided/as-run": 627.1,
+      "unguided/retrained": 644.549,
+      "domain-guided": 1.46
     }
   }
 }
