@@ -34,25 +34,25 @@ Both sessions were initialized identically using the [`teta-autoresearch`](https
 
 ## Metric Observations
 
-Evaluating both sessions under the RouteE Compass deployment contract ([audit/contract.py](audit/contract.py)) demonstrates how reported scores diverge from deployable reality:
+The audit ([audit/README.md](audit/README.md)) rebuilds each final model, checks it reproduces the reported score, and asks whether it could run inside RouteE Compass, which only sees the current link and the one before it.
 
-| session | domain rules | exps | reported rmse | audited rmse | reported trip_rmse | audited trip_rmse | deployable features |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| unguided | absent | 50 | 0.004795 | **0.014050** | 0.001235 | **0.004096** | 5 of 13 |
-| domain-guided | present | 51 | 0.006823 | **0.006823** | 0.002237 | **0.002237** | 11 of 11 |
+| session | domain rules | exps | reported link RMSE | usable features | can run in Compass | link RMSE, refit on usable inputs |
+| --- | --- | --- | --- | --- | --- | --- |
+| unguided | absent | 50 | 0.004795 | 5 of 13 | **no** | 0.007557 |
+| domain-guided | present | 51 | 0.006823 | 11 of 11 | **yes** | 0.006823 |
 
-*Baseline: 0.013345 link RMSE / 0.003037 trip RMSE. Audited metrics score models on held-out data (327,647 links) under deployment rules.*
+*Baseline: 0.013345 link RMSE. Scored on 327,647 held-out links.*
 
 ### Key Metric Takeaways
 
-##### Reported vs. Audited Reality Gap
-![img/audit.png](img/audit.png)
-![img/audit-bar.png](img/audit-bar.png)
+##### Reported vs. Deployable
+| ![link RMSE by model](img/audit-error.png) | ![time to score one million links](img/audit-inference.png) |
+| --- | --- |
 
 
-- **Guided Stability**: For the `domain-guided` session, reported and audited numbers are identical (0.006823 link RMSE / 0.002237 trip RMSE). Because all 11 features conform to deployment constraints, no performance is lost when moving to production.
-- **Unguided Collapse**: For `unguided`, reported performance (0.004795 / 0.001235) collapses under the contract to **0.014050 / 0.004096** (+193% link RMSE and +232% trip RMSE). Once non-deployable signals are removed, the model performs worse than the baseline it started from.
-- **Audit Result**: When the unguided model family is retrained strictly on deployable features, it achieves 0.007557 / 0.002362. The domain-guided model outperforms this fair refit by +10.8% on link RMSE and +5.6% on trip RMSE. For more details, read more about [the audit](audit/README.md).
+- **Domain-guided: deployable as is.** Every input it uses is available in Compass, so its reported 0.006823 is the real number.
+- **Unguided: not deployable.** Its reported 0.004795 depends on future links, simulation timestamps and energy labels. A route search has none of these, so that number cannot be delivered.
+- **Fair comparison.** Refit on usable inputs only, the unguided recipe reaches 0.007557. The domain-guided model is still 10% better. Details are in [audit/results/report.md](audit/results/report.md).
 
 ##### RMSE by trial
 
@@ -95,16 +95,17 @@ The experiment transcripts and commit histories reveal contrasting behavioral pa
 ## Outcomes
 
 ### 1. Specification Prevents Phantom Progress
-**Without explicit domain boundaries, autonomous agents optimize whatever metric they are given by exploiting informational shortcuts.** In this study, 8 of the unguided session's 13 features, its journey offset, and its CNN architecture were undeployable, turning a 64% reported error reduction into a net degradation in real deployment.
+**Without domain rules, the agent optimised the metric it was given using inputs that do not exist at inference time.** 8 of the unguided session's 13 features, its journey offset and its sequence model all need things a route search does not have: future links, simulation-trace timestamps, or energy labels. Its reported 64% error reduction is not a number Compass can deliver.
 
-### 2. Domain Guidance Produces Better Real-World Accuracy
-Comparing deployable models directly, the domain-guided model defeated the retrained unguided architecture on both link RMSE (0.006823 vs. 0.007557) and trip RMSE (0.002237 vs. 0.002362).
+### 2. Domain Guidance Produced the Better Deployable Model
+Refit on usable inputs only, the unguided recipe reaches a link RMSE of 0.007557. The domain-guided model reaches 0.006823, about 10% better.
 
-### 3. Inference Cost is the Dominant Practical Driver
-In RouteE Compass, shortest-path searches evaluate link energy millions of times:
-- `domain-guided`: **1.45 microseconds per link** (1.4 s for 1M traversals; 0.2 MB serialized model).
-- `unguided/retrained-contract`: **950.7 microseconds per link** (951 s for 1M traversals; 35.5 MB model).  
-The domain-guided model is **657× faster** and acceptable for continental-scale energy-aware graph search.
+### 3. Inference Cost Is the Bigger Difference
+A RouteE Compass route search scores millions of links, one CPU thread at a time. Measured at batch 512 in the audit's Python harness:
+- `domain-guided`: **1.45 microseconds per link**, about 1.4 s for one million links.
+- `unguided/retrained`: **945 microseconds per link**, about 945 s for one million links.
+
+The domain-guided model is about **650× faster**. The gap is a model choice: 10,000 boosted trees against two small networks. Only the domain-guided agent was told inference cost mattered.
 
 ---
 

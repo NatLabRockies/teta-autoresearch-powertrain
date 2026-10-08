@@ -1,23 +1,13 @@
-"""Feature construction for both arms, plus the causal substitutes.
+"""Feature construction for both arms, copied from each arm's final `train.py`.
 
-The as-run blocks are transcribed from each arm's final `train.py` (unguided
-`bc07466`, domain-guided `e315384`) and must stay equivalent in behaviour — if they
-drift, the audit stops reproducing the reported numbers and the whole comparison is
-void. `audit_accuracy.py` checks that by reproducing both reported scores before it
-does anything else.
+The unguided block is from commit `bc07466`; the domain-guided block is from
+`e315384`. They must behave exactly like the originals, or the audit stops
+reproducing the reported numbers. `audit_accuracy.py` checks that first.
 
-Two things here are deliberately *not* imported from the trees. The model definitions
-and the feature code are transcriptions, checked by the reproduction test rather than
-by import, because importing from a tree would make the audit depend on the thing it
-is auditing. The one file that IS copied verbatim is `harness.py`, which defines the
-split and the metrics; byte-identity there is checkable with a single sha256 and is
-what makes "same held-out rows, same metric" true rather than asserted.
-
-The `causal_*` block is the audit's own work. For each feature the contract puts
-outside the Compass envelope, it builds the best substitute a forward search could
-actually compute. Nothing in that block reads a link the vehicle has not yet
-traversed. Several features have no substitute at all — see `contract.py` on the
-`TRACE` and `LABEL` tiers — and those are left to the training mean.
+Nothing is imported from the experiment trees. The code is transcribed and
+checked by the reproduction test instead, so the audit does not depend on the
+thing it is auditing. The one file copied verbatim is `harness.py`, which holds
+the split and the metric.
 """
 
 from __future__ import annotations
@@ -34,26 +24,23 @@ EARTH_RADIUS_MILES = 3958.7613
 
 
 def load_sorted() -> pd.DataFrame:
-    """Load and apply the sort both arms applied before splitting.
+    """Load and sort the way both arms did before splitting.
 
-    The fixed split draws `rng.random(len(df)) < 0.2` against row *order*, so the
-    sort is load-bearing: a different order is a different test set. Both arms sort
-    by `["journey_id", "link_start_time"]`, so the audit does too.
+    The split is drawn against row order, so a different sort would be a
+    different test set.
     """
     df = pd.read_parquet(DATA_PATH)
     return df.sort_values(["journey_id", "link_start_time"]).reset_index(drop=True)
 
 
-# --- unguided arm, as run (bc07466) --------------------------------------------
+# --- unguided arm (bc07466) ------------------------------------------------------
 
 
 def add_unguided_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Transcribed from unguided/train.py `add_features`. Do not 'improve'.
+    """From unguided/train.py `add_features`. Do not change.
 
-    Note the neighbour fills: a trip begins and ends at rest, so the missing
-    neighbour speed at each end is 0 rather than imputed. `prev2_speed` is left as
-    NaN where it does not exist — HistGradientBoosting handles NaN natively and the
-    arm relied on that.
+    A trip starts and ends at rest, so a missing neighbour speed is 0.
+    `prev2_speed` is left NaN where it does not exist; the tree model handles NaN.
     """
     by_journey = df.groupby("journey_id", sort=False)["speed_mph"]
     v_in = by_journey.shift(1).fillna(0.0)
@@ -71,24 +58,19 @@ def add_unguided_features(df: pd.DataFrame) -> pd.DataFrame:
     df["gap_seconds"] = df["link_start_time"] - prev_end
     next_start = df.groupby("journey_id", sort=False)["link_start_time"].shift(-1)
     df["next_gap_seconds"] = next_start - df["link_end_time"]
-
-    # Kept for the causal substitutes below, which need the entry speed.
-    df["_v_in"] = v_in
     return df
 
 
-#: Shrink strength for the journey effect, in links. Transcribed from the arm.
+#: Shrink strength for the journey effect, in links. From the arm.
 JOURNEY_PRIOR_LINKS = 20.0
 
 
 def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
-    """Transcribed from unguided/train.py `add_journey_effect`.
+    """From unguided/train.py `add_journey_effect`.
 
-    This is the `LABEL`-tier pair. Both columns are built from the *target* of other
-    links in the same journey: leave-one-out on the training side, plain shrunk mean
-    on the test side. Reproduced exactly, because the audit's first job is to
-    reproduce the arm's number — and then scored away, because at inference there are
-    no labels to average.
+    Both columns are averages of the target over the other links of the same
+    journey. Leave-one-out on the training side, plain shrunk mean on the test
+    side. Reproduced exactly so the reported number can be reproduced.
     """
     stats = train_df.groupby("journey_id")[TARGET].agg(["sum", "count"])
     gge = train_df.groupby("journey_id")[["energy_gge", "miles"]].sum()
@@ -117,11 +99,11 @@ def add_journey_effect(train_df: pd.DataFrame, test_df: pd.DataFrame) -> None:
     test_df["journey_gge_per_mile"] = (own_e + k_miles * prior_gge) / (own_d + k_miles)
 
 
-# --- domain-guided arm, as run (e315384) ---------------------------------------
+# --- domain-guided arm (e315384) -------------------------------------------------
 
 
 def _heading(coords: np.ndarray, tail: np.ndarray, head: np.ndarray) -> np.ndarray:
-    """Compass-plane bearing of each tail -> head segment, in radians."""
+    """Bearing of each tail -> head segment, in radians."""
     mean_lat = np.radians((coords[head, 1] + coords[tail, 1]) / 2)
     east = (coords[head, 0] - coords[tail, 0]) * np.cos(mean_lat)
     north = coords[head, 1] - coords[tail, 1]
@@ -129,7 +111,7 @@ def _heading(coords: np.ndarray, tail: np.ndarray, head: np.ndarray) -> np.ndarr
 
 
 def _geometry_features(geometry: pd.Series) -> dict[str, np.ndarray]:
-    """Transcribed from domain-guided/train.py `geometry_features`."""
+    """From domain-guided/train.py `geometry_features`."""
     geoms = shapely.from_wkb(geometry.to_numpy())
     coords = shapely.get_coordinates(geoms)
     n_points = shapely.get_num_coordinates(geoms)
@@ -151,15 +133,13 @@ def _geometry_features(geometry: pd.Series) -> dict[str, np.ndarray]:
 
 
 def add_domain_guided_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Transcribed from domain-guided/train.py `load_data`. Do not 'improve'."""
+    """From domain-guided/train.py `load_data`. Do not change."""
     df["prev_speed_mph"] = df.groupby("journey_id")["speed_mph"].shift(1).fillna(0.0)
     df["prev_grade_percent"] = (
         df.groupby("journey_id")["grade_percent"].shift(1).fillna(0.0)
     )
-    # NOTE: this arm's prev_miles fills with 0.0; the unguided arm leaves its own
-    # prev_miles as NaN. Same name, different column — they are built separately and
-    # never share storage. `build_all` keeps the unguided one and derives this arm's
-    # under a private name.
+    # This arm fills prev_miles with 0.0; the unguided arm leaves it NaN. Same
+    # name, different column, so this one is stored under a private name.
     df["_dg_prev_miles"] = df.groupby("journey_id")["miles"].shift(1).fillna(0.0)
     df["ke_delta_per_mile"] = (df["speed_mph"] ** 2 - df["prev_speed_mph"] ** 2) / (
         2.0 * df["miles"]
@@ -179,48 +159,14 @@ def add_domain_guided_features(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-# --- causal substitutes (the audit's own work) ---------------------------------
-
-#: Suffix marking a causal stand-in for an out-of-contract feature.
-CAUSAL = "__causal"
-
-
-def add_causal_substitutes(df: pd.DataFrame) -> pd.DataFrame:
-    """Best causal value for each out-of-contract unguided feature.
-
-    Every column here is computable by a forward search. None of them reads a link
-    ahead of the vehicle. Requires `add_unguided_features` to have run.
-
-    Only two of the eight out-of-contract features get one:
-
-    - `dke_per_mile` — its causal half is `(speed**2 - v_in**2) / miles`, which is
-      exactly `dke_in_link`, already in the model. So the substitute is real but
-      buys nothing new: the model has it twice.
-    - `prev2_speed` — already causal. The substitute is the column itself; what it
-      costs is one float per search label, not accuracy.
-
-    `next_miles`, `dv_out`, `gap_seconds`, `next_gap_seconds`, `journey_rate` and
-    `journey_gge_per_mile` have none, for the reasons in `contract.py`. They go to
-    the training mean in every audited configuration. That is not the audit being
-    lazy — it is the finding.
-    """
-    df[f"dke_per_mile{CAUSAL}"] = (df["speed_mph"] ** 2 - df["_v_in"] ** 2) / df[
-        "miles"
-    ]
-    df[f"prev2_speed{CAUSAL}"] = df["prev2_speed"]
-    return df
-
-
 def build_all(df: pd.DataFrame) -> pd.DataFrame:
-    """Every column any audit configuration needs, on one frame."""
+    """Every column the audit needs, on one frame."""
     df = add_unguided_features(df)
     df = add_domain_guided_features(df)
-    df = add_causal_substitutes(df)
     return df
 
 
-#: Columns the domain-guided model reads, resolved to the actual frame columns.
-#: `prev_miles` is the one name both arms use for different fills.
 def domain_guided_matrix(df: pd.DataFrame, features: list[str]) -> np.ndarray:
+    """The domain-guided model's inputs, with its own `prev_miles` fill."""
     cols = [("_dg_prev_miles" if f == "prev_miles" else f) for f in features]
     return df[cols].to_numpy(dtype=np.float64)

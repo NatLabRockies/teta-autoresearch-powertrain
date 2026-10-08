@@ -1,23 +1,15 @@
-"""Reconstructions of each arm's final model, with fit/predict/persist.
+"""Each arm's final model, rebuilt from its final `train.py`.
 
-Hyperparameters are transcribed from the arms' final `train.py` — unguided
-`bc07466` (exp48), domain-guided `e315384` (exp50). Changing any of them invalidates
-the reproduction check in `audit_accuracy.py`.
+Settings are copied from unguided `bc07466` (exp48) and domain-guided `e315384`
+(exp50). Changing any of them breaks the reproduction check.
 
-The unguided arm's model is three parts, and the audit needs to score them apart as
-well as together, so each is a separate object here:
+The unguided model has three parts, and the audit needs to fit them separately:
 
-    UnguidedEnsemble    5 seeded HistGradientBoostingRegressors, averaged
-    SequenceMember      the dilated 1-D CNN over each journey's link chain, in
-                        both the arm's bidirectional form and a causal one
-    journey_offset      the per-journey residual correction (in `features`-free
-                        functions below, since it is arithmetic, not a fit)
+    UnguidedEnsemble        5 seeded HistGradientBoostingRegressors, averaged
+    sequence_predictions    a small 1-D convolutional network over each journey
+    journey_offset          a per-journey correction from training residuals
 
-One reproducibility note, which is a property of the arm rather than of this audit:
-the sequence member trains for a **wall-clock budget**, not a fixed number of epochs.
-On different hardware it sees a different number of updates, so `unguided/reported`
-is reproducible only to within that drift. The domain-guided arm's network runs a
-fixed 320 epochs and is deterministic.
+The domain-guided model is two small MLPs, averaged.
 """
 
 from __future__ import annotations
@@ -29,28 +21,24 @@ import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 
-# --- unguided: 5-seed HistGradientBoosting ensemble (bc07466) -------------------
+TARGET_COL = "energy_rate_gge"
+
+# --- unguided: 5-seed HistGradientBoosting ensemble (bc07466) --------------------
 
 N_ENSEMBLE = 5
 BASE_SEED = 52
-FEATURE_SUBSAMPLE = 0.7
 
 UNGUIDED_PARAMS = {
     "max_iter": 2000,
     "learning_rate": 0.1,
     "max_leaf_nodes": 31,
-    "max_features": FEATURE_SUBSAMPLE,
+    "max_features": 0.7,
     "early_stopping": False,
 }
 
 
 class UnguidedEnsemble:
-    """Mean of five independently seeded fits.
-
-    The members differ only by `random_state`, which drives the per-split feature
-    subsampling — the fits are otherwise deterministic. No sample weighting: this
-    arm dropped the mile-weighted loss its predecessor used.
-    """
+    """Mean of five fits that differ only by random seed."""
 
     def __init__(self, n: int = N_ENSEMBLE) -> None:
         self.seeds = tuple(BASE_SEED + i for i in range(n))
@@ -66,12 +54,8 @@ class UnguidedEnsemble:
     def predict(self, x) -> np.ndarray:
         return np.mean([m.predict(x) for m in self.models], axis=0)
 
-    @property
-    def n_trees(self) -> int:
-        return sum(len(m._predictors) for m in self.models)
 
-
-# --- unguided: the journey offset ----------------------------------------------
+# --- unguided: the journey offset ------------------------------------------------
 
 JOURNEY_PRIOR_LINKS = 20.0
 
@@ -79,11 +63,10 @@ JOURNEY_PRIOR_LINKS = 20.0
 def out_of_fold_residual(
     train_df: pd.DataFrame, y_train: np.ndarray, features: list[str]
 ) -> np.ndarray:
-    """Training residuals from a model that did not see the row it is scoring.
+    """Training residuals from a model that did not see the row it scores.
 
-    Transcribed from unguided/train.py. Two folds, each scored by the model fitted
-    on the other. This costs two more ensemble fits, which is most of why
-    reproducing this arm is expensive.
+    From unguided/train.py. Two folds, each scored by the model fit on the other.
+    This costs two more ensemble fits.
     """
     fold = np.arange(len(train_df)) % 2
     residual = np.empty(len(train_df), dtype=np.float64)
@@ -99,11 +82,10 @@ def out_of_fold_residual(
 def journey_offset(
     train_df: pd.DataFrame, test_df: pd.DataFrame, residual: np.ndarray
 ) -> np.ndarray:
-    """Per-journey correction. Transcribed from unguided/train.py.
+    """Per-journey correction. From unguided/train.py.
 
-    Distance-weighted mean training residual per journey, shrunk toward zero. This
-    is the `LABEL`-tier component: it is built from the targets of the journey's own
-    training links, so it has no inference-time form.
+    Distance-weighted mean training residual per journey, shrunk toward zero.
+    It is built from the labels of the journey's own training links.
     """
     keys = train_df["journey_id"].to_numpy()
     miles = train_df["miles"].to_numpy()
@@ -116,54 +98,44 @@ def journey_offset(
     )
 
 
-# --- unguided: the sequence member ---------------------------------------------
+# --- unguided: the sequence model ------------------------------------------------
 
 CHANNELS = 64
 DILATIONS = (1, 2)
 KERNEL = 5
 SEQ_LR = 4.5e-3
-#: The arm caps its sequence training at 60s and, in a 504s run, actually got the
-#: full 60. Fixed here rather than derived from a run deadline, so the audit does
-#: not inherit the arm's wall-clock coupling.
+#: The arm trains this for 60 seconds of wall clock, not a fixed number of steps.
 SEQ_SECONDS = 60.0
 MAX_TOKENS_PER_BATCH = 32768
 BLEND = 0.30
 SEQ_SEED = 52
 
-#: Receptive field of the stacked dilated blocks, in links, each way.
-#: 1 + sum(dilation * (KERNEL - 1)) // 2 per side.
-SEQ_HALF_WIDTH = sum(d * (KERNEL - 1) for d in DILATIONS) // 2
 
-
-def _build_seq(n_features: int, causal: bool):
-    import torch
+def _build_seq(n_features: int):
     from torch import nn
 
     class Block(nn.Module):
-        """Residual dilated-convolution block over the link axis.
+        """Residual dilated convolution over the link axis, padded on both sides.
 
-        `causal=True` pads on the left only, so output position i depends on inputs
-        at positions <= i. That is the whole difference between a sequence member a
-        Compass search could run and the one the arm actually fit.
+        Same padding on both sides means each output reads links after it as
+        well as before it.
         """
 
         def __init__(self, dilation: int) -> None:
             super().__init__()
-            self.pad = dilation * (KERNEL - 1)
-            self.causal = causal
-            pad = 0 if causal else self.pad // 2
             self.conv1 = nn.Conv1d(
-                CHANNELS, CHANNELS, KERNEL, padding=pad, dilation=dilation
+                CHANNELS,
+                CHANNELS,
+                KERNEL,
+                padding=dilation * (KERNEL - 1) // 2,
+                dilation=dilation,
             )
             self.conv2 = nn.Conv1d(CHANNELS, CHANNELS, 1)
             self.norm = nn.GroupNorm(1, CHANNELS)
             self.act = nn.GELU()
 
         def forward(self, x):
-            h = self.norm(x)
-            if self.causal:
-                h = torch.nn.functional.pad(h, (self.pad, 0))
-            return x + self.conv2(self.act(self.conv1(h)))
+            return x + self.conv2(self.act(self.conv1(self.norm(x))))
 
     class LinkSequenceNet(nn.Module):
         def __init__(self) -> None:
@@ -232,17 +204,12 @@ def sequence_predictions(
     train_rows: np.ndarray,
     features: list[str],
     *,
-    causal: bool = False,
     seconds: float = SEQ_SECONDS,
 ) -> np.ndarray:
-    """Fit the sequence member and predict every link of every journey.
+    """Fit the sequence model and predict every link of every journey.
 
-    Transcribed from unguided/train.py `sequence_predictions`, with one added
-    switch: `causal=True` masks the convolutions so the network reads only links
-    already traversed. Everything else — standardization, masking of the loss to
-    training rows, the cosine schedule, the seed — is the arm's.
-
-    Test links are fed in as context but never scored, exactly as the arm did it.
+    From unguided/train.py `sequence_predictions`. Test links are fed in as
+    context but never used in the loss, exactly as the arm did it.
     """
     import torch
 
@@ -259,7 +226,7 @@ def sequence_predictions(
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     torch.manual_seed(SEQ_SEED)
     packed = _pack_journeys(df, x, y, w, device)
-    net = _build_seq(x.shape[1], causal).to(device)
+    net = _build_seq(x.shape[1]).to(device)
     opt = torch.optim.AdamW(net.parameters(), lr=SEQ_LR, weight_decay=1e-4)
 
     rng = np.random.default_rng(SEQ_SEED)
@@ -286,11 +253,7 @@ def sequence_predictions(
     return out
 
 
-#: Set by `audit_accuracy` so this module needs no import from `features`.
-TARGET_COL = "energy_rate_gge"
-
-
-# --- domain-guided: 2 x 128 MLP ensemble (e315384) -----------------------------
+# --- domain-guided: 2 x 128 MLP ensemble (e315384) -------------------------------
 
 HIDDEN = 128
 N_MODELS = 2
@@ -314,12 +277,7 @@ def _build_net(n_features: int):
 
 
 class DomainGuidedMLP:
-    """The domain-guided arm's model: two 128-wide members, averaged.
-
-    Kept as an object so the inference benchmark can reuse the fitted nets instead
-    of retraining for them. Members differ only by seed (init + shuffle order); the
-    epoch count is fixed, so this is deterministic on a given device.
-    """
+    """Two 128-wide MLPs, averaged. Fixed epoch count, so it is deterministic."""
 
     def __init__(self, features: list[str]) -> None:
         self.features = features
@@ -384,10 +342,6 @@ class DomainGuidedMLP:
                     .numpy()
                 )
         return np.mean(outs, axis=0) * self.y_sd + self.y_mu
-
-    @property
-    def n_params(self) -> int:
-        return sum(p.numel() for p in self.nets[0].parameters()) * len(self.nets)
 
     def to_cpu_eval(self) -> list:
         """CPU copies in eval mode, for the inference benchmark."""
